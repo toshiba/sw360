@@ -1,0 +1,50 @@
+//
+// Copyright Siemens AG, 2017. Part of the SW360 Portal Project.
+//
+// This program and the accompanying materials are made
+// available under the terms of the Eclipse Public License 2.0
+// which is available at https://www.eclipse.org/legal/epl-2.0/
+//
+// SPDX-License-Identifier: EPL-2.0
+//
+
+[[resources-vendors]]
+=== Vendors
+
+The Vendors resource is used to create and list vendors.
+
+
+[[resources-vendors-list]]
+==== Listing vendors
+
+A `GET` request will list all of the service's vendors.
+
+===== Response structure
+include::{snippets}/should_document_get_vendors/response-fields.adoc[]
+
+===== Example request
+include::{snippets}/should_document_get_vendors/curl-request.adoc[]
+
+===== Example response
+include::{snippets}/should_document_get_vendors/http-response.adoc[]
+
+===== Links
+include::{snippets}/should_document_get_vendors/links.adoc[]
+
+
+[[resources-vendor-get]]
+==== Get a single vendor
+
+A `GET` request will get a single vendor.
+
+===== Response structure
+include::{snippets}/should_document_get_vendor/response-fields.adoc[]
+
+===== Example request
+include::{snippets}/should_document_get_vendor/curl-request.adoc[]
+
+===== Example response
+include::{snippets}/should_document_get_vendor/http-response.adoc[]
+
+===== Links
+include::{snippets}/should_document_get_vendor/links.adoc[]

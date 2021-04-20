@@ -1,0 +1,806 @@
+/*
+ * Copyright Siemens AG, 2013-2018. Part of the SW360 Portal Project.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.eclipse.sw360.portal.portlets.moderation;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.google.common.collect.Lists;
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.servlet.SessionMessages;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.ResourceBundleUtil;
+
+import org.eclipse.sw360.datahandler.common.CommonUtils;
+import org.eclipse.sw360.datahandler.common.SW360Constants;
+import org.eclipse.sw360.datahandler.common.SW360Utils;
+import org.eclipse.sw360.datahandler.permissions.PermissionUtils;
+import org.eclipse.sw360.datahandler.thrift.ModerationState;
+import org.eclipse.sw360.datahandler.thrift.RemoveModeratorRequestStatus;
+import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.components.Component;
+import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
+import org.eclipse.sw360.datahandler.thrift.components.Release;
+import org.eclipse.sw360.datahandler.thrift.components.ReleaseClearingStateSummary;
+import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseInfoService;
+import org.eclipse.sw360.datahandler.thrift.licenses.License;
+import org.eclipse.sw360.datahandler.thrift.licenses.LicenseService;
+import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
+import org.eclipse.sw360.datahandler.thrift.licenses.ObligationLevel;
+import org.eclipse.sw360.datahandler.thrift.moderation.ModerationRequest;
+import org.eclipse.sw360.datahandler.thrift.moderation.ModerationService;
+import org.eclipse.sw360.datahandler.thrift.projects.ClearingRequest;
+import org.eclipse.sw360.datahandler.thrift.projects.Project;
+import org.eclipse.sw360.datahandler.thrift.projects.ProjectLink;
+import org.eclipse.sw360.datahandler.thrift.projects.ProjectService;
+import org.eclipse.sw360.datahandler.thrift.users.RequestedAction;
+import org.eclipse.sw360.datahandler.thrift.users.User;
+import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
+import org.eclipse.sw360.datahandler.thrift.users.UserService;
+import org.eclipse.sw360.datahandler.thrift.vendors.VendorService;
+import org.eclipse.sw360.portal.common.ChangeLogsPortletUtils;
+import org.eclipse.sw360.portal.common.ErrorMessages;
+import org.eclipse.sw360.portal.common.JsonHelpers;
+import org.eclipse.sw360.portal.common.PortalConstants;
+import org.eclipse.sw360.portal.common.PortletUtils;
+import org.eclipse.sw360.portal.common.ThriftJsonSerializer;
+import org.eclipse.sw360.portal.common.UsedAsLiferayAction;
+import org.eclipse.sw360.portal.portlets.FossologyAwarePortlet;
+import org.eclipse.sw360.portal.users.UserCacheHolder;
+import org.eclipse.sw360.portal.users.UserUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.thrift.TException;
+import org.jetbrains.annotations.NotNull;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+
+import javax.portlet.*;
+import javax.servlet.http.HttpServletRequest;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.liferay.portal.kernel.json.JSONFactoryUtil.createJSONArray;
+import static com.liferay.portal.kernel.json.JSONFactoryUtil.createJSONObject;
+import static org.eclipse.sw360.datahandler.common.CommonUtils.nullToEmptySet;
+import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
+import static org.eclipse.sw360.portal.common.PortalConstants.*;
+
+@org.osgi.service.component.annotations.Component(
+    immediate = true,
+    properties = {
+        "/org/eclipse/sw360/portal/portlets/base.properties",
+        "/org/eclipse/sw360/portal/portlets/default.properties"
+    },
+    property = {
+        "javax.portlet.name=" + MODERATION_PORTLET_NAME,
+
+        "javax.portlet.display-name=Moderations",
+        "javax.portlet.info.short-title=Moderations",
+        "javax.portlet.info.title=Moderations",
+        "javax.portlet.resource-bundle=content.Language",
+        "javax.portlet.init-param.view-template=/html/moderation/view.jsp",
+    },
+    service = Portlet.class,
+    configurationPolicy = ConfigurationPolicy.REQUIRE
+)
+public class ModerationPortlet extends FossologyAwarePortlet {
+
+    private static final Logger log = LogManager.getLogger(ModerationPortlet.class);
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
+
+    @Override
+    public void serveResource(ResourceRequest request, ResourceResponse response) throws IOException, PortletException {
+        String action = request.getParameter(PortalConstants.ACTION);
+        if (PortalConstants.ACTION_REMOVEME.equals(action)) {
+            removeMeFromModerators(request, response);
+        } else if (PortalConstants.DELETE_MODERATION_REQUEST.equals(action)) {
+            serveDeleteModerationRequest(request, response);
+        } else if (PortalConstants.ADD_COMMENT.equals(action)) {
+            addCommentToClearingRequest(request, response);
+        } else if (PortalConstants.LOAD_PROJECT_INFO.equals(action)) {
+            getProjectDetailsForCR(request, response);
+        } else if (isGenericAction(action)) {
+            dealWithGenericAction(request, response, action);
+        } else if (PortalConstants.LOAD_CHANGE_LOGS.equals(action) || PortalConstants.VIEW_CHANGE_LOGS.equals(action)) {
+            ChangeLogsPortletUtils changeLogsPortletUtilsPortletUtils = PortletUtils
+                    .getChangeLogsPortletUtils(thriftClients);
+            JSONObject dataForChangeLogs = changeLogsPortletUtilsPortletUtils.serveResourceForChangeLogs(request,
+                    response, action);
+            writeJSON(request, response, dataForChangeLogs);
+        }
+    }
+
+    private void serveDeleteModerationRequest(ResourceRequest request, ResourceResponse response) throws IOException {
+        RequestStatus requestStatus = ModerationPortletUtils.deleteModerationRequest(request, log);
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        serveRequestStatus(request, response, requestStatus, LanguageUtil.get(resourceBundle,"problem.removing.moderation.request"), log);
+    }
+
+    private void addCommentToClearingRequest(ResourceRequest request, ResourceResponse response) throws PortletException {
+        RequestStatus requestStatus = ModerationPortletUtils.addCommentToClearingRequest(request, log);
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        serveRequestStatus(request, response, requestStatus, LanguageUtil.get(resourceBundle,"error.adding.comment.to.clearing.request"), log);
+    }
+
+    private void getProjectDetailsForCR(ResourceRequest request, ResourceResponse response) throws PortletException, IOException {
+        User user = UserCacheHolder.getUserFromRequest(request);
+        List<Project> projects;
+        String ids[] = request.getParameterValues("projectIds[]");
+        if (ids == null || ids.length == 0) {
+            JSONArray jsonResponse = createJSONArray();
+            writeJSON(request, response, jsonResponse);
+        } else {
+            ProjectService.Iface client = thriftClients.makeProjectClient();
+            try {
+                projects = client.getProjectsById(Arrays.asList(ids), user);
+            } catch (TException e) {
+                log.error("Could not fetch project summary from backend!", e);
+                projects = Collections.emptyList();
+            }
+
+            projects = getWithFilledClearingStateSummary(client, projects, user);
+
+            JSONArray jsonResponse = createJSONArray();
+            ThriftJsonSerializer thriftJsonSerializer = new ThriftJsonSerializer();
+            for (Project project : projects) {
+                try {
+                    JSONObject row = createJSONObject();
+                    row.put("id", project.getId());
+                    row.put("crId", project.getClearingRequestId());
+                    row.put("name", SW360Utils.printName(project));
+                    row.put("clearing", JsonHelpers.toJson(project.getReleaseClearingStateSummary(), thriftJsonSerializer));
+                    String babl = project.getAdditionalData().get("BA BL");
+                    row.put("bu", CommonUtils.isNotNullEmptyOrWhitespace(babl) ? babl : CommonUtils.nullToEmptyString(project.getBusinessUnit()));
+                    jsonResponse.put(row);
+                } catch (JSONException e) {
+                    log.error("cannot serialize json", e);
+                }
+            }
+            writeJSON(request, response, jsonResponse);
+        }
+    }
+
+    private List<Project> getWithFilledClearingStateSummary(ProjectService.Iface client, List<Project> projects, User user) {
+        try {
+            return client.fillClearingStateSummary(projects, user);
+        } catch (TException e) {
+            log.error("Could not get summary of release clearing states for projects!", e);
+            return projects;
+        }
+    }
+
+    private void removeMeFromModerators(ResourceRequest request, ResourceResponse response){
+        final User user = UserCacheHolder.getUserFromRequest(request);
+        final String id = request.getParameter(MODERATION_ID);
+        ModerationService.Iface client = thriftClients.makeModerationClient();
+        RemoveModeratorRequestStatus status = null;
+        try {
+            status = client.removeUserFromAssignees(id, user);
+            request.setAttribute(PortalConstants.REQUEST_STATUS, status);
+        } catch(TException e) {
+            log.error("Error in Moderation ", e);
+        }
+        renderRemoveModerationRequestStatus(request, response, status);
+    }
+
+    @Override
+    public void doView(RenderRequest request, RenderResponse response) throws IOException, PortletException {
+        final String pageName = request.getParameter(PAGENAME);
+        if (PAGENAME_EDIT.equals(pageName)) {
+            renderEditView(request, response);
+        } else if (PAGENAME_ACTION.equals(pageName)) {
+            renderActionView(request, response);
+        } else if (PAGENAME_EDIT_CLEARING_REQUEST.equals(pageName) || PAGENAME_DETAIL_CLEARING_REQUEST.equals(pageName)) {
+            renderClearingRequest(request, response, pageName);
+            include("/html/moderation/clearing/clearingRequest.jsp", request, response);
+        } else {
+            renderStandardView(request, response);
+        }
+    }
+
+    private void renderActionView(RenderRequest request, RenderResponse response) throws IOException, PortletException {
+        final User user = UserCacheHolder.getUserFromRequest(request);
+        final String id = request.getParameter(MODERATION_ID);
+        String sessionMessage;
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (id != null) {
+            try {
+                ModerationService.Iface client = thriftClients.makeModerationClient();
+                ModerationRequest moderationRequest = client.getModerationRequestById(id);
+                String action = request.getParameter(ACTION);
+                String encodedModerationComment = request.getParameter(MODERATION_DECISION_COMMENT);
+                String moderationComment = "";
+                if (encodedModerationComment != null) {
+                    moderationComment = new String(Base64.getDecoder().decode(encodedModerationComment));
+                }
+
+                if (ACTION_CANCEL.equals(action)) {
+                    client.cancelInProgress(id);
+
+                    sessionMessage = LanguageUtil.get(resourceBundle,"you.have.cancelled.working.on.the.previous.moderation.request");
+                } else if (ACTION_DECLINE.equals(action)) {
+                    declineModerationRequest(user, moderationRequest, request);
+
+                    client.refuseRequest(id, moderationComment, user.getEmail());
+                    sessionMessage = LanguageUtil.get(resourceBundle,"you.have.declined.the.previous.moderation.request");
+                } else if (ACTION_ACCEPT.equals(action)) {
+                    String requestingUserEmail = moderationRequest.getRequestingUser();
+                    User requestingUser = UserCacheHolder.getUserFromEmail(requestingUserEmail);
+                    acceptModerationRequest(user, requestingUser, moderationRequest, request);
+
+                    client.acceptRequest(moderationRequest, moderationComment, user.getEmail());
+                    sessionMessage = LanguageUtil.get(resourceBundle,"you.have.accepted.the.previous.moderation.request");
+                } else if (ACTION_POSTPONE.equals(action)) {
+                    // keep me assigned but do it later... so nothing to be done here, just update the comment message
+                    moderationRequest.setCommentDecisionModerator(moderationComment);
+                    client.updateModerationRequest(moderationRequest);
+                    sessionMessage = LanguageUtil.get(resourceBundle,"you.have.postponed.the.previous.moderation.request");
+                } else if (ACTION_RENDER_NEXT_AFTER_UNSUBSCRIBE.equals(action)) {
+                    sessionMessage = LanguageUtil.get(resourceBundle,"you.are.removed.from.the.list.of.moderators.for.the.previous.moderation.request");
+                } else {
+                   throw new PortletException("Unknown action");
+                }
+
+                //! Actions are processed now we go and render the next one
+                renderNextModeration(request, response, user, sessionMessage, client, moderationRequest);
+            } catch (TException e) {
+                log.error("Error in Moderation ", e);
+            }
+        }
+    }
+
+    private void renderClearingRequest(RenderRequest request, RenderResponse response, String pageName) throws PortletException {
+        final String clearingId = request.getParameter(CLEARING_REQUEST_ID);
+        final User user = UserCacheHolder.getUserFromRequest(request);
+
+        if (CommonUtils.isNullEmptyOrWhitespace(clearingId)) {
+            throw new PortletException("Clearing request ID not set!");
+        }
+
+        try {
+            ModerationService.Iface client = thriftClients.makeModerationClient();
+            ClearingRequest clearingRequest;
+            if (PAGENAME_EDIT_CLEARING_REQUEST.equals(pageName)) {
+                clearingRequest = client.getClearingRequestByIdForEdit(clearingId, user);
+            } else {
+                clearingRequest = client.getClearingRequestById(clearingId, user);
+            }
+            clearingRequest.setComments(Lists.reverse(CommonUtils.nullToEmptyList(clearingRequest.getComments())));
+            request.setAttribute(CLEARING_REQUEST, clearingRequest);
+            request.setAttribute(WRITE_ACCESS_USER, false);
+            request.setAttribute(IS_CLEARING_EXPERT, PermissionUtils.isUserAtLeast(UserGroup.CLEARING_EXPERT, user));
+
+            if (CommonUtils.isNotNullEmptyOrWhitespace(clearingRequest.getProjectId()) ) {
+                ProjectService.Iface projectClient = thriftClients.makeProjectClient();
+                Project project = projectClient.getProjectById(clearingRequest.getProjectId(), UserCacheHolder.getUserFromRequest(request));
+                request.setAttribute(PROJECT, project);
+                request.setAttribute(WRITE_ACCESS_USER, makePermission(project, user).isActionAllowed(RequestedAction.WRITE));
+                List<Project> projects = getWithFilledClearingStateSummary(projectClient, Lists.newArrayList(project), user);
+                Integer approvedReleaseCount = 0;
+                Project projWithCsSummary = projects.get(0);
+                if (null != projWithCsSummary && null != projWithCsSummary.getReleaseClearingStateSummary()) {
+                    ReleaseClearingStateSummary summary = projWithCsSummary.getReleaseClearingStateSummary();
+                    approvedReleaseCount = summary.getApproved() + summary.getReportAvailable();
+                }
+                request.setAttribute(APPROVED_RELEASE_COUNT, approvedReleaseCount);
+            }
+            addClearingBreadcrumb(request, response, clearingId);
+        } catch (TException e) {
+            log.error("Error fetching clearing request from backend!", e);
+            setSW360SessionError(request, ErrorMessages.ERROR_GETTING_CLEARING_REQUEST);
+        }
+    }
+
+    @UsedAsLiferayAction
+    public void updateClearingRequest(ActionRequest request, ActionResponse response) throws PortletException, IOException {
+        RequestStatus requestStatus = requestStatus = ModerationPortletUtils.updateClearingRequest(request, log);
+        if (RequestStatus.SUCCESS.equals(requestStatus)) {
+            response.setRenderParameter(CLEARING_REQUEST_ID, request.getParameter(CLEARING_REQUEST_ID));
+            response.setRenderParameter(PAGENAME, PAGENAME_DETAIL_CLEARING_REQUEST);
+        }
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        setSessionMessage(request, requestStatus, LanguageUtil.get(resourceBundle,"clearing.request"), "update");
+    }
+
+    private void declineModerationRequest(User user, ModerationRequest moderationRequest, RenderRequest request) throws TException {
+        switch (moderationRequest.getDocumentType()) {
+            case USER:
+                UserUtils.deleteLiferayUser(request, moderationRequest.getUser());
+                UserService.Iface userClient = thriftClients.makeUserClient();
+                userClient.deleteUser(UserCacheHolder.getRefreshedUserFromEmail(moderationRequest.getUser().getEmail()), user);
+                break;
+            default:
+                break;
+        }
+    }
+    private void acceptModerationRequest(User user, User requestingUser, ModerationRequest moderationRequest, RenderRequest request) throws TException {
+        switch (moderationRequest.getDocumentType()) {
+            case COMPONENT: {
+                ComponentService.Iface componentClient = thriftClients.makeComponentClient();
+                if (moderationRequest.isRequestDocumentDelete()) {
+                    componentClient.deleteComponent(moderationRequest.getDocumentId(), user);
+                } else {
+                    componentClient.updateComponentFromModerationRequest(
+                            moderationRequest.getComponentAdditions(),
+                            moderationRequest.getComponentDeletions(),
+                            user);
+                }
+            }
+            break;
+            case RELEASE: {
+                ComponentService.Iface componentClient = thriftClients.makeComponentClient();
+                if (moderationRequest.isRequestDocumentDelete()) {
+                    componentClient.deleteRelease(moderationRequest.getDocumentId(), user);
+                } else {
+                    componentClient.updateReleaseFromModerationRequest(
+                            moderationRequest.getReleaseAdditions(),
+                            moderationRequest.getReleaseDeletions(),
+                            user);
+                }
+            }
+            break;
+            case PROJECT: {
+                ProjectService.Iface projectClient = thriftClients.makeProjectClient();
+                if (moderationRequest.isRequestDocumentDelete()) {
+                    projectClient.deleteProject(moderationRequest.getDocumentId(), user);
+                } else {
+                    projectClient.updateProjectFromModerationRequest(
+                            moderationRequest.getProjectAdditions(),
+                            moderationRequest.getProjectDeletions(),
+                            user);
+                }
+            }
+            break;
+            case LICENSE: {
+                LicenseService.Iface licenseClient = thriftClients.makeLicenseClient();
+                    licenseClient.updateLicenseFromModerationRequest(
+                            moderationRequest.getLicenseAdditions(),
+                            moderationRequest.getLicenseDeletions(),
+                            user,
+                            requestingUser);
+            }
+            break;
+            case USER: {
+                UserUtils.activateLiferayUser(request, moderationRequest.getUser());
+            }
+            break;
+        }
+    }
+
+    private void renderNextModeration(RenderRequest request, RenderResponse response, final User user, String sessionMessage, ModerationService.Iface client, ModerationRequest moderationRequest) throws IOException, PortletException, TException {
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (ACTION_CANCEL.equals(request.getParameter(ACTION))) {
+            SessionMessages.add(request, "request_processed", sessionMessage);
+            renderStandardView(request, response);
+            return;
+        }
+
+        List<ModerationRequest> requestsByModerator = client.getRequestsByModerator(user);
+        List<ModerationRequest> openModerationRequests = requestsByModerator
+                .stream()
+                .filter(input-> ModerationState.PENDING.equals(input.getModerationState()))
+                .collect(Collectors.toList());
+
+        Collections.sort(openModerationRequests, compareByTimeStamp());
+
+        int nextIndex = openModerationRequests.indexOf(moderationRequest) + 1;
+        if (nextIndex < openModerationRequests.size()) {
+            renderEditViewForId(request, response, openModerationRequests.get(nextIndex).getId());
+        } else {
+            List<ModerationRequest> requestsInProgressAndAssignedToMe = requestsByModerator
+                    .stream()
+                    .filter(input-> ModerationState.INPROGRESS.equals(input.getModerationState()) && user.getEmail().equals(input.getReviewer()))
+                    .collect(Collectors.toList());
+
+            if (requestsInProgressAndAssignedToMe.size()>0) {
+                sessionMessage += LanguageUtil.get(resourceBundle,"you.have.returned.to.your.first.open.request");
+                SessionMessages.add(request, "request_processed", sessionMessage);
+                renderEditViewForId(request, response, Collections.min(requestsInProgressAndAssignedToMe, compareByTimeStamp()).getId());
+            } else {
+                sessionMessage += LanguageUtil.get(resourceBundle,"you.have.no.open.requests");
+                SessionMessages.add(request, "request_processed", sessionMessage);
+                renderStandardView(request, response);
+            }
+        }
+    }
+
+    @NotNull
+    private Comparator<ModerationRequest> compareByTimeStamp() {
+        return new Comparator<ModerationRequest>() {
+            @Override
+            public int compare(ModerationRequest o1, ModerationRequest o2) {
+                return Long.compare(o1.getTimestamp(), o2.getTimestamp());
+            }
+        };
+    }
+
+    private void addModerationBreadcrumb(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest) {
+        PortletURL baseUrl = response.createRenderURL();
+        baseUrl.setParameter(PAGENAME, PAGENAME_EDIT);
+        baseUrl.setParameter(MODERATION_ID, moderationRequest.getId());
+
+        addBreadcrumbEntry(request, moderationRequest.getDocumentName(), baseUrl);
+    }
+
+    private void addClearingBreadcrumb(RenderRequest request, RenderResponse response, String Id) {
+        PortletURL baseUrl = response.createRenderURL();
+        baseUrl.setParameter(PAGENAME, PAGENAME_EDIT_CLEARING_REQUEST);
+        baseUrl.setParameter(CLEARING_REQUEST_ID, Id);
+
+        addBreadcrumbEntry(request, Id, baseUrl);
+    }
+
+    public void renderStandardView(RenderRequest request, RenderResponse response) throws IOException, PortletException {
+        User user = UserCacheHolder.getUserFromRequest(request);
+
+        HttpServletRequest httpServletRequest = PortalUtil.getOriginalServletRequest(PortalUtil.getHttpServletRequest(request));
+        String selectedTab = httpServletRequest.getParameter(SELECTED_TAB);
+
+        List<ModerationRequest> openModerationRequests = null;
+        List<ModerationRequest> closedModerationRequests = null;
+        List<ClearingRequest> openClearingRequests = null;
+        List<ClearingRequest> closedClearingRequests = null;
+        ModerationService.Iface client = thriftClients.makeModerationClient();
+
+        try {
+            List<ModerationRequest> moderationRequests = client.getRequestsByModerator(user);
+            Map<Boolean, List<ModerationRequest>> partitionedModerationRequests = moderationRequests
+                    .stream()
+                    .collect(Collectors.groupingBy(ModerationPortletUtils::isOpenModerationRequest));
+            openModerationRequests = partitionedModerationRequests.get(true);
+            closedModerationRequests = partitionedModerationRequests.get(false);
+        } catch (TException e) {
+            log.error("Could not fetch moderation requests from backend!", e);
+        }
+
+        request.setAttribute(MODERATION_REQUESTS, CommonUtils.nullToEmptyList(openModerationRequests));
+        request.setAttribute(CLOSED_MODERATION_REQUESTS, CommonUtils.nullToEmptyList(closedModerationRequests));
+        request.setAttribute(IS_USER_AT_LEAST_CLEARING_ADMIN, PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user) ? "Yes" : "No");
+
+        try {
+            Set<ClearingRequest> clearingRequestsSet = client.getMyClearingRequests(user);
+            clearingRequestsSet.addAll(client.getClearingRequestsByBU(user.getDepartment()));
+
+            Map<Boolean, List<ClearingRequest>> partitionedClearingRequests = clearingRequestsSet
+                    .stream().collect(Collectors.groupingBy(ModerationPortletUtils::isClosedClearingRequest));
+            closedClearingRequests = partitionedClearingRequests.get(true);
+            openClearingRequests = partitionedClearingRequests.get(false);
+        } catch (TException e) {
+            log.error("Could not fetch clearing requests from backend!", e);
+        }
+
+        request.setAttribute(CLEARING_REQUESTS, CommonUtils.nullToEmptyList(openClearingRequests));
+        request.setAttribute(CLOSED_CLEARING_REQUESTS, CommonUtils.nullToEmptyList(closedClearingRequests));
+        request.setAttribute(IS_CLEARING_EXPERT, PermissionUtils.isUserAtLeast(UserGroup.CLEARING_EXPERT, user));
+        PortletUtils.getBaBlSelection(request, user);
+        List<Organization> organizations = UserUtils.getOrganizations(request);
+        request.setAttribute(PortalConstants.ORGANIZATIONS, organizations);
+        if (CommonUtils.isNotNullEmptyOrWhitespace(selectedTab)) {
+            request.setAttribute(SELECTED_TAB, selectedTab);
+        }
+        super.doView(request, response);
+    }
+
+    public void renderEditView(RenderRequest request, RenderResponse response) throws IOException, PortletException {
+        String id = request.getParameter(MODERATION_ID);
+        try {
+            renderEditViewForId(request, response, id);
+        } catch (TException e) {
+            log.error("Thrift error", e);
+        }
+    }
+
+    private void renderEditViewForId(RenderRequest request, RenderResponse response, String id) throws IOException, PortletException, TException {
+        if (id != null) {
+            ModerationRequest moderationRequest = null;
+            User user = UserCacheHolder.getUserFromRequest(request);
+            ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+            try {
+
+                ModerationService.Iface client = thriftClients.makeModerationClient();
+                moderationRequest = client.getModerationRequestById(id);
+                boolean actionsAllowed = moderationRequest.getModerators().contains(user.getEmail()) && ModerationPortletUtils.isOpenModerationRequest(moderationRequest);
+                request.setAttribute(PortalConstants.MODERATION_ACTIONS_ALLOWED, actionsAllowed);
+                if(actionsAllowed) {
+                    SessionMessages.add(request, "request_processed", LanguageUtil.get(resourceBundle,"you.have.assigned.yourself.to.this.moderation.request"));
+                    client.setInProgress(id, user);
+                }
+                request.setAttribute(PortalConstants.MODERATION_REQUEST, moderationRequest);
+                addModerationBreadcrumb(request, response, moderationRequest);
+
+            } catch (TException e) {
+                log.error("Error fetching moderation  details from backend", e);
+            }
+
+            if (moderationRequest != null) {
+                switch (moderationRequest.getDocumentType()) {
+                    case COMPONENT:
+                        renderComponentModeration(request, response, moderationRequest, user);
+                        break;
+                    case RELEASE:
+                        VendorService.Iface vendorClient = thriftClients.makeVendorClient();
+                        Release additions = moderationRequest.getReleaseAdditions();
+                        if(additions.isSetVendorId()){
+                            additions.setVendor(vendorClient.getByID(additions.getVendorId()));
+                        }
+                        Release deletions = moderationRequest.getReleaseDeletions();
+                        if(deletions.isSetVendorId()){
+                            deletions.setVendor(vendorClient.getByID(deletions.getVendorId()));
+                        }
+                        renderReleaseModeration(request, response, moderationRequest, user);
+                        break;
+                    case PROJECT:
+                        renderProjectModeration(request, response, moderationRequest, user);
+                        break;
+                    case LICENSE:
+                        renderLicenseModeration(request, response, moderationRequest, user);
+                        break;
+                    case USER:
+                        renderUserModeration(request, response, moderationRequest, user);
+                        break;
+                }
+            }
+        }
+    }
+
+    public void renderComponentModeration(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user) throws IOException, PortletException, TException {
+
+        final boolean requestDocumentDelete = moderationRequest.isRequestDocumentDelete();
+        Boolean is_used = false;
+
+        Component actual_component = null;
+
+        try {
+            ComponentService.Iface client = thriftClients.makeComponentClient();
+            actual_component = client.getComponentById(moderationRequest.getDocumentId(), user);
+            is_used = client.componentIsUsed(actual_component.getId());
+        } catch (TException e) {
+            log.error("Could not retrieve component", e);
+        }
+
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (actual_component == null) {
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"eignored.unretrievable.target"), thriftClients.makeModerationClient(), moderationRequest);
+            return;
+        }
+
+        if (refuseToDeleteUsedDocument(request, response, moderationRequest, user, requestDocumentDelete, is_used))
+            return;
+
+        prepareComponent(request, user, actual_component);
+        request.setAttribute(PortalConstants.ACTUAL_COMPONENT, actual_component);
+        if (moderationRequest.isRequestDocumentDelete()) {
+            include("/html/moderation/components/delete.jsp", request, response);
+        } else {
+            include("/html/moderation/components/merge.jsp", request, response);
+        }
+    }
+
+    private void prepareComponent(RenderRequest request, User user, Component actualComponent) {
+        List<Release> releases;
+
+        releases = CommonUtils.nullToEmptyList(actualComponent.getReleases());
+        Set<String> releaseIds = SW360Utils.getReleaseIds(releases);
+
+        Set<Project> usingProjects = null;
+        int allUsingProjectsCount = 0;
+
+        if (releaseIds != null && releaseIds.size() > 0) {
+            try {
+                ProjectService.Iface projectClient = thriftClients.makeProjectClient();
+                usingProjects = projectClient.searchByReleaseIds(releaseIds, user);
+                allUsingProjectsCount = projectClient.getCountByReleaseIds(releaseIds);
+            } catch (TException e) {
+                log.error("Could not retrieve using projects", e);
+            }
+        }
+        request.setAttribute(DOCUMENT_TYPE, SW360Constants.TYPE_COMPONENT);
+        setAttachmentsInRequest(request, actualComponent);
+        request.setAttribute(USING_PROJECTS, nullToEmptySet(usingProjects));
+        request.setAttribute(ALL_USING_PROJECTS_COUNT, allUsingProjectsCount);
+    }
+
+    public void renderReleaseModeration(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user) throws IOException, PortletException, TException {
+        Release actual_release = null;
+
+        final boolean requestDocumentDelete = moderationRequest.isRequestDocumentDelete();
+        Boolean is_used = false;
+
+        try {
+            ComponentService.Iface client = thriftClients.makeComponentClient();
+            actual_release = client.getReleaseById(moderationRequest.getDocumentId(), user);
+            is_used = client.releaseIsUsed(actual_release.getId());
+        } catch (TException e) {
+            log.error("Could not retrieve release", e);
+        }
+
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (actual_release == null) {
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"ignored.unretrievable.target"), thriftClients.makeModerationClient(), moderationRequest);
+            return;
+        }
+
+        if (refuseToDeleteUsedDocument(request, response, moderationRequest, user, requestDocumentDelete, is_used))
+            return;
+
+        prepareRelease(request, user, actual_release);
+        request.setAttribute(PortalConstants.ACTUAL_RELEASE, actual_release);
+        if (requestDocumentDelete) {
+            include("/html/moderation/releases/delete.jsp", request, response);
+        } else {
+            include("/html/moderation/releases/merge.jsp", request, response);
+        }
+    }
+
+    private boolean refuseToDeleteUsedDocument(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user, boolean requestDocumentDelete, Boolean is_used) throws TException, IOException, PortletException {
+        if (requestDocumentDelete && is_used) {
+            ModerationService.Iface client = thriftClients.makeModerationClient();
+            ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+            client.refuseRequest(moderationRequest.getId(), LanguageUtil.get(resourceBundle,"you.cannot.delete.a.document.still.used.by.others"), user.getEmail());
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"ignored.delete.of.used.target"), client, moderationRequest);
+            return true;
+        }
+        return false;
+    }
+
+    private void prepareRelease(RenderRequest request, User user, Release actualRelease) {
+
+        String actualReleaseId = actualRelease.getId();
+        request.setAttribute(DOCUMENT_ID, actualReleaseId);
+        request.setAttribute(DOCUMENT_TYPE, SW360Constants.TYPE_RELEASE);
+        setAttachmentsInRequest(request, actualRelease);
+        try {
+            ProjectService.Iface projectClient = thriftClients.makeProjectClient();
+            Set<Project> usingProjects = projectClient.searchByReleaseId(actualReleaseId, user);
+            request.setAttribute(USING_PROJECTS, nullToEmptySet(usingProjects));
+            int allUsingProjectsCount = projectClient.getCountByReleaseIds(Collections.singleton(actualReleaseId));
+            request.setAttribute(ALL_USING_PROJECTS_COUNT, allUsingProjectsCount);
+            putDirectlyLinkedReleaseRelationsInRequest(request, actualRelease);
+        } catch (TException e) {
+            log.error("Could not retrieve using projects", e);
+        }
+
+        try {
+            request.setAttribute(COMPONENT, thriftClients.makeComponentClient().getComponentById(actualRelease.getComponentId(), user));
+        } catch (TException e) {
+            log.error("Could not fetch component from Backend ", e);
+        }
+
+    }
+
+    public void renderProjectModeration(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user) throws IOException, PortletException, TException {
+        final boolean requestDocumentDelete = moderationRequest.isRequestDocumentDelete();
+        Boolean is_used = false;
+        Project actual_project = null;
+        try {
+            ProjectService.Iface client = thriftClients.makeProjectClient();
+            actual_project = client.getProjectById(moderationRequest.getDocumentId(), user);
+            actual_project = client.fillClearingStateSummary(Collections.singletonList(actual_project), user).get(0);
+            is_used = client.projectIsUsed(actual_project.getId());
+            request.setAttribute(PortalConstants.ACTUAL_PROJECT, actual_project);
+            request.setAttribute(PortalConstants.DEFAULT_LICENSE_INFO_HEADER_TEXT, getDefaultLicenseInfoHeaderText());
+        } catch (TException e) {
+            log.error("Could not retrieve project", e);
+        }
+
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (actual_project == null) {
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"ignored.unretrievable.target"), thriftClients.makeModerationClient(), moderationRequest);
+            return;
+        }
+
+        if (refuseToDeleteUsedDocument(request, response, moderationRequest, user, requestDocumentDelete, is_used))
+            return;
+
+        prepareProject(request, user, actual_project);
+        if (moderationRequest.isRequestDocumentDelete()) {
+            include("/html/moderation/projects/delete.jsp", request, response);
+        } else {
+            //updateProjectFromModerationRequest and add updated project to request.
+            include("/html/moderation/projects/merge.jsp", request, response);
+        }
+    }
+
+    private void prepareProject(RenderRequest request, User user, Project actual_project) {
+        try {
+            ProjectService.Iface client = thriftClients.makeProjectClient();
+            List<ProjectLink> mappedProjectLinks = createLinkedProjects(actual_project, user);
+            request.setAttribute(PROJECT_LIST, mappedProjectLinks);
+            putDirectlyLinkedReleasesInRequest(request, actual_project);
+            Set<Project> usingProjects = client.searchLinkingProjects(actual_project.getId(), user);
+            request.setAttribute(USING_PROJECTS, usingProjects);
+            int allUsingProjectsCount = client.getCountByProjectId(actual_project.getId());
+            request.setAttribute(ALL_USING_PROJECTS_COUNT, allUsingProjectsCount);
+            putReleasesAndProjectIntoRequest(request, actual_project.getId(), user);
+            request.setAttribute(DOCUMENT_TYPE, SW360Constants.TYPE_PROJECT);
+            setAttachmentsInRequest(request, actual_project);
+        } catch (TException e) {
+            log.error("Error fetching project from backend!", e);
+        }
+    }
+
+    public void renderLicenseModeration(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user) throws IOException, PortletException, TException {
+        License actual_license = null;
+        User requestingUser = UserCacheHolder.getUserFromEmail(moderationRequest.getRequestingUser());
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        try {
+            LicenseService.Iface client = thriftClients.makeLicenseClient();
+            actual_license = client.getByID(moderationRequest.getDocumentId(),requestingUser.getDepartment());
+            request.setAttribute(KEY_LICENSE_DETAIL, actual_license);
+            List<Obligation> obligations = client.getObligations().stream()
+                    .filter(Objects::nonNull)
+                    .filter(Obligation::isSetObligationLevel)
+                    .filter(obl -> obl.getObligationLevel().equals(ObligationLevel.LICENSE_OBLIGATION))
+                    .collect(Collectors.toList());
+            request.setAttribute(KEY_OBLIGATION_LIST, obligations);
+        } catch (TException e) {
+            log.error("Could not retrieve license", e);
+        }
+
+        if (actual_license == null) {
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"ignored.unretrievable.target"), thriftClients.makeModerationClient(), moderationRequest);
+            return;
+        }
+
+        include("/html/moderation/licenses/merge.jsp", request, response);
+    }
+
+    public void  renderUserModeration(RenderRequest request, RenderResponse response, ModerationRequest moderationRequest, User user) throws IOException, PortletException, TException {
+        User changedUser = null;
+        try {
+            UserService.Iface client = thriftClients.makeUserClient();
+            changedUser = client.getByEmail(moderationRequest.getUser().getEmail());
+            request.setAttribute(PortalConstants.USER, changedUser);
+        } catch (TException e) {
+            log.error("Could not retrieve user", e);
+        }
+
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(), getClass());
+        if (changedUser == null) {
+            renderNextModeration(request, response, user, LanguageUtil.get(resourceBundle,"ignored.unretrievable.target"), thriftClients.makeModerationClient(), moderationRequest);
+            return;
+        }
+
+        List<Organization> organizations = UserUtils.getOrganizations(request);
+        request.setAttribute(PortalConstants.ORGANIZATIONS, organizations);
+
+        include("/html/moderation/users/merge.jsp", request, response);
+    }
+
+    private UnsupportedOperationException unsupportedActionException() {
+        throw new UnsupportedOperationException("cannot call this action on the moderation portlet");
+    }
+
+    @Override
+    protected void dealWithFossologyAction(ResourceRequest request, ResourceResponse response, String action) throws IOException, PortletException {
+        throw unsupportedActionException();
+    }
+
+    @Override
+    protected Set<Attachment> getAttachments(String documentId, String documentType, User user) {
+        throw unsupportedActionException();
+    }
+
+    private String getDefaultLicenseInfoHeaderText() {
+        final LicenseInfoService.Iface licenseInfoClient = thriftClients.makeLicenseInfoClient();
+        try {
+            String defaultLicenseInfoHeaderText = licenseInfoClient.getDefaultLicenseInfoHeaderText();
+            return defaultLicenseInfoHeaderText;
+        } catch (TException e) {
+            log.error("Could not load default license info header text from backend.", e);
+            return "";
+        }
+    }
+}
