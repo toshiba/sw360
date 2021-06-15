@@ -10,14 +10,17 @@
 
 package org.eclipse.sw360.moderation.db;
 
+import com.cloudant.client.api.CloudantClient;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
+import org.eclipse.sw360.datahandler.cloudantclient.DatabaseConnectorCloudant;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
+import org.eclipse.sw360.datahandler.common.DatabaseSettings;
 import org.eclipse.sw360.datahandler.common.SW360Constants;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.common.ThriftEnumUtils;
-import org.eclipse.sw360.datahandler.couchdb.DatabaseConnector;
 import org.eclipse.sw360.datahandler.db.ComponentDatabaseHandler;
 import org.eclipse.sw360.datahandler.db.DatabaseHandlerUtil;
 import org.eclipse.sw360.datahandler.db.ProjectDatabaseHandler;
@@ -26,6 +29,7 @@ import org.eclipse.sw360.datahandler.thrift.ClearingRequestEmailTemplate;
 import org.eclipse.sw360.datahandler.thrift.ClearingRequestState;
 import org.eclipse.sw360.datahandler.thrift.Comment;
 import org.eclipse.sw360.datahandler.thrift.ModerationState;
+import org.eclipse.sw360.datahandler.thrift.PaginationData;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.ThriftClients;
@@ -49,17 +53,20 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
-import org.ektorp.http.HttpClient;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.MalformedURLException;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.eclipse.sw360.datahandler.common.CommonUtils.notEmptyOrNull;
 import static org.eclipse.sw360.datahandler.common.SW360Assert.fail;
+import static org.eclipse.sw360.datahandler.common.SW360Utils.getBUFromOrganisation;
 import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
 
 /**
@@ -82,12 +89,13 @@ public class ModerationDatabaseHandler {
     private final LicenseDatabaseHandler licenseDatabaseHandler;
     private final ProjectDatabaseHandler projectDatabaseHandler;
     private final ComponentDatabaseHandler componentDatabaseHandler;
-    private final DatabaseConnector db;
+    private final DatabaseConnectorCloudant db;
+    private DatabaseHandlerUtil dbHandlerUtil;
 
     private final MailUtil mailUtil = new MailUtil();
 
-    public ModerationDatabaseHandler(Supplier<HttpClient> httpClient, String dbName, String attachmentDbName) throws MalformedURLException {
-        db = new DatabaseConnector(httpClient, dbName);
+    public ModerationDatabaseHandler(Supplier<CloudantClient> httpClient, String dbName, String attachmentDbName) throws MalformedURLException {
+        db = new DatabaseConnectorCloudant(httpClient, dbName);
 
         // Create the repository
         repository = new ModerationRequestRepository(db);
@@ -96,10 +104,23 @@ public class ModerationDatabaseHandler {
         licenseDatabaseHandler = new LicenseDatabaseHandler(httpClient, dbName);
         projectDatabaseHandler = new ProjectDatabaseHandler(httpClient, dbName, attachmentDbName);
         componentDatabaseHandler = new ComponentDatabaseHandler(httpClient, dbName, attachmentDbName);
+        DatabaseConnectorCloudant dbChangeLogs = new DatabaseConnectorCloudant(httpClient, DatabaseSettings.COUCH_DB_CHANGE_LOGS);
+        this.dbHandlerUtil = new DatabaseHandlerUtil(dbChangeLogs);
+    }
+
+    public ModerationDatabaseHandler(Supplier<CloudantClient> httpClient, String dbName, String changeLogsDbName, String attachmentDbName) throws MalformedURLException {
+        this(httpClient, dbName, attachmentDbName);
+        DatabaseConnectorCloudant db = new DatabaseConnectorCloudant(httpClient, changeLogsDbName);
+        this.dbHandlerUtil = new DatabaseHandlerUtil(db);
+
     }
 
     public List<ModerationRequest> getRequestsByModerator(String moderator) {
         return repository.getRequestsByModerator(moderator);
+    }
+
+    public Map<PaginationData, List<ModerationRequest>> getRequestsByModerator(String moderator, PaginationData pageData, boolean open) {
+        return repository.getRequestsByModerator(moderator, pageData, open);
     }
 
     public List<ModerationRequest> getRequestsByRequestingUser(String user) {
@@ -312,7 +333,7 @@ public class ModerationDatabaseHandler {
             dbRequest.setCommentDecisionModerator(moderationComment);
             repository.update(dbRequest);
         }
-        DatabaseHandlerUtil.addChangeLogs(dbRequest, requestBefore, reviewer, Operation.MODERATION_ACCEPT,
+        dbHandlerUtil.addChangeLogs(dbRequest, requestBefore, reviewer, Operation.MODERATION_ACCEPT,
                 null, Lists.newArrayList(), dbRequest.getDocumentId(),null);
         sendMailNotificationsForAcceptedRequest(request);
     }
@@ -329,8 +350,7 @@ public class ModerationDatabaseHandler {
         Set<String> moderators = new HashSet<>();
         CommonUtils.add(moderators, dbcomponent.getCreatedBy());
         CommonUtils.addAll(moderators, dbcomponent.getModerators());
-        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN));
-
+        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN, null, false, true));
         ModerationRequest request = createStubRequest(user, isDeleteRequest, component.getId(), moderators);
 
         // Set meta-data
@@ -388,7 +408,8 @@ public class ModerationDatabaseHandler {
         Set<String> moderators = new HashSet<>();
         CommonUtils.add(moderators, release.getCreatedBy());
         CommonUtils.addAll(moderators, release.getModerators());
-        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN));
+        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN, null, false, true));
+
         return moderators;
     }
 
@@ -398,7 +419,7 @@ public class ModerationDatabaseHandler {
         Set<String> moderators = new HashSet<>();
         try{
             String department =  getDepartmentByUserEmail(release.getCreatedBy());
-            CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.ECC_ADMIN, department));
+            CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.ECC_ADMIN, department, false, true));
         } catch (TException e){
             log.error("Could not get users from database. ECC admins not added as moderators, since department is missing.");
         }
@@ -439,7 +460,7 @@ public class ModerationDatabaseHandler {
         }
 
         // Define moderators
-        Set<String> moderators = getProjectModerators(dbproject);
+        Set<String> moderators = getProjectModerators(dbproject, user.getDepartment());
         ModerationRequest request = createStubRequest(user, isDeleteRequest, project.getId(), moderators);
 
         // Set meta-data
@@ -454,14 +475,14 @@ public class ModerationDatabaseHandler {
     }
 
     @NotNull
-    private Set<String> getProjectModerators(Project project) {
+    private Set<String> getProjectModerators(Project project, String department) {
         Set<String> moderators = new HashSet<>();
         if (project.getClearingState() != ProjectClearingState.CLOSED){
             CommonUtils.add(moderators, project.getCreatedBy());
             CommonUtils.add(moderators, project.getProjectResponsible());
             CommonUtils.addAll(moderators, project.getModerators());
         }
-        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN));
+        CommonUtils.addAll(moderators, getUsersAtLeast(UserGroup.CLEARING_ADMIN, project.getBusinessUnit(), true, false));
         return moderators;
     }
 
@@ -511,12 +532,10 @@ public class ModerationDatabaseHandler {
     private Set<String> getLicenseModerators(String department) {
         List<User> sw360users = getAllSW360Users();
         //try first clearing admins or admins from same department
-        Set<String> moderators = sw360users
-                .stream()
-                .filter(user1 -> PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user1))
-                .filter(user1 -> user1.getDepartment().equals(department))
-                .map(User::getEmail)
+        Set<String> moderators = sw360users.stream()
+                .filter(getRelevantUserPredicate(UserGroup.CLEARING_ADMIN, department, true, true)).map(User::getEmail)
                 .collect(Collectors.toSet());
+
         //second choice are all clearing admins or admins in SW360
         if (moderators.size() == 0) {
             moderators = sw360users
@@ -529,35 +548,84 @@ public class ModerationDatabaseHandler {
     }
 
     private Set<String> getUsersAtLeast(UserGroup userGroup, String department) {
-        return getUsersAtLeast(userGroup, department, true);
+        return getUsersAtLeast(userGroup, department, false, false);
     }
 
-    private Set<String> getUsersAtLeast(UserGroup userGroup, String department, boolean defaultToAllUsersInGroup) {
-        List<User> sw360users = getAllSW360Users();
-        List<User> allRelevantUsers = sw360users
-                    .stream()
-                    .filter(user1 -> PermissionUtils.isUserAtLeast(userGroup, user1))
-                    .collect(Collectors.toList());
+    private Stream<User> getFilteredStreamOfProjectModeratorBasedOnSecondaryRole(UserGroup userGroup,
+            List<User> sw360users, String department) {
+        return sw360users.stream().filter(user -> {
+            String buFromOrganisation = getBUFromOrganisation(user.getDepartment());
+            if (!department.equals(buFromOrganisation)
+                    && !CommonUtils.isNullOrEmptyMap(user.getSecondaryDepartmentsAndRoles())) {
+                for (Entry<String, Set<UserGroup>> entry : user.getSecondaryDepartmentsAndRoles().entrySet()) {
+                    if (CommonUtils.isNotNullEmptyOrWhitespace(entry.getKey())) {
+                        String buFromSecondaryOrganisation = getBUFromOrganisation(entry.getKey());
+                        if (department.equals(buFromSecondaryOrganisation) && PermissionUtils
+                                .isUserAtLeastDesiredRoleInSecondaryGroup(userGroup, entry.getValue())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        });
+    }
 
-        List<User> relevantUsersOfDepartment = Collections.emptyList();
-        if(department != null) {
-            relevantUsersOfDepartment = allRelevantUsers.stream()
-                    .filter(user -> user.getDepartment().equals(department))
-                    .collect(Collectors.toList());
+    private Set<String> getUsersAtLeast(UserGroup userGroup, String department,
+            boolean isFetchProjectModeratorBasedOnSecondaryRole, boolean isScanSecondaryGroup) {
+        List<User> sw360users = getAllSW360Users();
+        List<User> projectModeratorBasedOnSecondaryRole = Collections.emptyList();
+        if (isFetchProjectModeratorBasedOnSecondaryRole && department != null) {
+            projectModeratorBasedOnSecondaryRole = getFilteredStreamOfProjectModeratorBasedOnSecondaryRole(userGroup,
+                    sw360users, department).collect(Collectors.toList());
         }
 
-        List<User> defaultUsersList = defaultToAllUsersInGroup ? allRelevantUsers : Collections.emptyList();
-        List<User> resultingUsers = relevantUsersOfDepartment.isEmpty() ? defaultUsersList : relevantUsersOfDepartment;
+        List<User> allRelevantUsers = sw360users.stream().filter(getRelevantUserPredicate(userGroup, department,
+                isScanSecondaryGroup, !isFetchProjectModeratorBasedOnSecondaryRole)).collect(Collectors.toList());
 
-        Set<String> resultingUserEmails = resultingUsers.stream()
-                    .map(User::getEmail)
-                    .collect(Collectors.toSet());
+        allRelevantUsers.addAll(projectModeratorBasedOnSecondaryRole);
+
+        Set<String> resultingUserEmails = allRelevantUsers.stream().map(User::getEmail).collect(Collectors.toSet());
 
         return resultingUserEmails;
     }
 
     private Set<String> getUsersAtLeast(UserGroup userGroup){
         return getUsersAtLeast(userGroup, null);
+    }
+
+    private Predicate<User> getRelevantUserPredicate(UserGroup userGroup, String department,
+            boolean isScanSecondaryGroup, boolean isDepartmentFilterRequired) {
+        return user1 -> {
+            boolean isUserAtLeastByPrimaryGrpPass = PermissionUtils.isUserAtLeast(userGroup, user1);
+            boolean isUserAtLeastBySecGrpPass = false;
+            boolean isDepartmentFilterPassed = true;
+            if ((!isUserAtLeastByPrimaryGrpPass || department != null) && isScanSecondaryGroup) {
+                Set<UserGroup> allSecRoles = !CommonUtils.isNullOrEmptyMap(user1.getSecondaryDepartmentsAndRoles())
+                        ? user1.getSecondaryDepartmentsAndRoles().entrySet().stream()
+                                .flatMap(entry -> entry.getValue().stream()).collect(Collectors.toSet())
+                        : new HashSet<UserGroup>();
+                isUserAtLeastBySecGrpPass = PermissionUtils.isUserAtLeastDesiredRoleInSecondaryGroup(userGroup,
+                        allSecRoles);
+            }
+
+            if (isDepartmentFilterRequired && department != null) {
+                if (isUserAtLeastByPrimaryGrpPass && user1.getDepartment().equals(department)) {
+                    return true;
+                }
+
+                if (isUserAtLeastBySecGrpPass) {
+                    for (Entry<String, Set<UserGroup>> entry : user1.getSecondaryDepartmentsAndRoles().entrySet()) {
+                        if (PermissionUtils.isUserAtLeastDesiredRoleInSecondaryGroup(userGroup, entry.getValue())
+                                && department.equals(entry.getKey())) {
+                            return true;
+                        }
+                    }
+                }
+                isDepartmentFilterPassed = false;
+            }
+            return isDepartmentFilterPassed && (isUserAtLeastByPrimaryGrpPass || isUserAtLeastBySecGrpPass);
+        };
     }
 
     private List<User> getAllSW360Users() {
@@ -607,6 +675,14 @@ public class ModerationDatabaseHandler {
 
         return request;
 
+    }
+
+    public Map<String, Long> getCountByModerationState(String moderator) {
+        return repository.getCountByModerationState(moderator);
+    }
+
+    public Set<String> getRequestingUserDepts() {
+        return repository.getRequestingUserDepts();
     }
 
     private void sendMailForNewCommentInCR(ClearingRequest cr, Comment comment, User user) throws SW360Exception {

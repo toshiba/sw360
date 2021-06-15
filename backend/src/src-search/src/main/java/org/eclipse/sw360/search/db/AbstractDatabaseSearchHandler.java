@@ -10,6 +10,7 @@
  */
 package org.eclipse.sw360.search.db;
 
+import com.cloudant.client.api.CloudantClient;
 import com.github.ldriscoll.ektorplucene.LuceneResult;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -19,10 +20,12 @@ import org.eclipse.sw360.datahandler.couchdb.lucene.LuceneAwareDatabaseConnector
 import org.eclipse.sw360.datahandler.couchdb.lucene.LuceneSearchView;
 import org.eclipse.sw360.datahandler.thrift.search.SearchResult;
 import org.eclipse.sw360.datahandler.thrift.users.User;
+import org.ektorp.http.HttpClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.eclipse.sw360.datahandler.couchdb.lucene.LuceneAwareDatabaseConnector.prepareWildcardQuery;
 
@@ -60,7 +63,14 @@ public abstract class AbstractDatabaseSearchHandler {
 
     public AbstractDatabaseSearchHandler(String dbName) throws IOException {
         // Create the database connector and add the search view to couchDB
-        connector = new LuceneAwareDatabaseConnector(DatabaseSettings.getConfiguredHttpClient(), dbName);
+        connector = new LuceneAwareDatabaseConnector(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.getConfiguredClient(), dbName);
+        connector.addView(luceneSearchView);
+        connector.setResultLimit(DatabaseSettings.LUCENE_SEARCH_LIMIT);
+    }
+
+    public AbstractDatabaseSearchHandler(Supplier<HttpClient> client, Supplier<CloudantClient> cclient, String dbName) throws IOException {
+        // Create the database connector and add the search view to couchDB
+        connector = new LuceneAwareDatabaseConnector(client, cclient, dbName);
         connector.addView(luceneSearchView);
         connector.setResultLimit(DatabaseSettings.LUCENE_SEARCH_LIMIT);
     }

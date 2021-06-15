@@ -13,12 +13,15 @@ import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.thrift.MainlineState;
 import org.eclipse.sw360.datahandler.thrift.ProjectReleaseRelationship;
+import org.eclipse.sw360.datahandler.thrift.ReleaseRelationship;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.Source;
 import org.eclipse.sw360.datahandler.thrift.Visibility;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentContent;
+import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentUsage;
+import org.eclipse.sw360.datahandler.thrift.attachments.CheckStatus;
 import org.eclipse.sw360.datahandler.thrift.attachments.LicenseInfoUsage;
 import org.eclipse.sw360.datahandler.thrift.attachments.UsageData;
 import org.eclipse.sw360.datahandler.thrift.components.ClearingState;
@@ -59,6 +62,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
@@ -125,15 +129,26 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
         attachmentList.add(attachment);
         attachmentResources.add(new Resource<>(attachment));
 
+        Set<Attachment> setOfAttachment = new HashSet<Attachment>();
+        Attachment att1 = new Attachment("1234", "test.zip").setAttachmentType(AttachmentType.SOURCE)
+                .setCreatedBy("user@sw360.org").setSha1("da373e491d312365483589ee9457bc316783").setCreatedOn("2021-04-27")
+                .setCreatedTeam("DEPARTMENT");
+        Attachment att2 = att1.deepCopy().setAttachmentType(AttachmentType.BINARY).setCreatedComment("Created Comment")
+                .setCheckStatus(CheckStatus.ACCEPTED).setCheckedComment("Checked Comment").setCheckedOn("2021-04-27")
+                .setCheckedBy("admin@sw360.org").setCheckedTeam("DEPARTMENT1");
+
         given(this.attachmentServiceMock.getAttachmentContent(anyObject())).willReturn(new AttachmentContent().setId("1231231254").setFilename("spring-core-4.3.4.RELEASE.jar").setContentType("binary"));
         given(this.attachmentServiceMock.getResourcesFromList(anyObject())).willReturn(new Resources<>(attachmentResources));
         given(this.attachmentServiceMock.uploadAttachment(anyObject(), anyObject(), anyObject())).willReturn(attachment);
+        given(this.attachmentServiceMock.updateAttachment(anyObject(), anyObject(), anyObject(), anyObject())).willReturn(att2);
 
         Map<String, ProjectReleaseRelationship> linkedReleases = new HashMap<>();
         Map<String, ProjectRelationship> linkedProjects = new HashMap<>();
         ProjectReleaseRelationship projectReleaseRelationship = new ProjectReleaseRelationship(CONTAINED, MAINLINE)
                 .setComment("Test Comment").setCreatedOn("2020-08-05").setCreatedBy("admin@sw360.org");
-
+        ProjectReleaseRelationship projectReleaseRelationshipResponseBody = projectReleaseRelationship.deepCopy()
+                .setComment("Test Comment").setMainlineState(MainlineState.SPECIFIC)
+                .setReleaseRelation(ReleaseRelationship.STANDALONE);
         Map<String, String> externalIds = new HashMap<>();
         externalIds.put("portal-id", "13319-XX3");
         externalIds.put("project-ext", "515432");
@@ -141,6 +156,16 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
 
         Map<String, String> additionalData = new HashMap<>();
         additionalData.put("OSPO-Comment", "Some Comment");
+
+        setOfAttachment.add(att1);
+        Project projectForAtt = new Project();
+        projectForAtt.setAttachments(setOfAttachment);
+        projectForAtt.setId("98745");
+        projectForAtt.setName("Test Project");
+        projectForAtt.setProjectType(ProjectType.PRODUCT);
+        projectForAtt.setVersion("1");
+        projectForAtt.setCreatedOn("2021-04-27");
+        projectForAtt.setCreatedBy("admin@sw360.org");
 
         List<Project> projectListByName = new ArrayList<>();
         Set<Project> usedByProjectList = new HashSet<>();
@@ -241,10 +266,12 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
         given(this.projectServiceMock.getProjectsForUser(anyObject())).willReturn(projectList);
         given(this.projectServiceMock.getProjectForUserById(eq(project.getId()), anyObject())).willReturn(project);
         given(this.projectServiceMock.getProjectForUserById(eq(project2.getId()), anyObject())).willReturn(project2);
+        given(this.projectServiceMock.getProjectForUserById(eq(projectForAtt.getId()), anyObject())).willReturn(projectForAtt);
         given(this.projectServiceMock.searchLinkingProjects(eq(project.getId()), anyObject())).willReturn(usedByProjectList);
         given(this.projectServiceMock.searchProjectByName(eq(project.getName()), anyObject())).willReturn(projectListByName);
         given(this.projectServiceMock.getReleaseIds(eq(project.getId()), anyObject(), eq("false"))).willReturn(releaseIds);
         given(this.projectServiceMock.getReleaseIds(eq(project.getId()), anyObject(), eq("true"))).willReturn(releaseIdsTransitive);
+        given(this.projectServiceMock.updateProjectReleaseRelationship(anyObject(), anyObject(), anyObject())).willReturn(projectReleaseRelationshipResponseBody);
         given(this.projectServiceMock.convertToEmbeddedWithExternalIds(eq(project))).willReturn(
                 new Project("Emerald Web")
                         .setVersion("1.0.2")
@@ -994,6 +1021,40 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
     }
 
     @Test
+    public void should_document_update_project_attachment_info() throws Exception {
+        Attachment updateAttachment = new Attachment().setAttachmentType(AttachmentType.BINARY)
+                .setCreatedComment("Created Comment").setCheckStatus(CheckStatus.ACCEPTED)
+                .setCheckedComment("Checked Comment");
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        this.mockMvc
+                .perform(patch("/api/projects/98745/attachment/1234").contentType(MediaTypes.HAL_JSON)
+                        .content(this.objectMapper.writeValueAsString(updateAttachment))
+                        .header("Authorization", "Bearer " + accessToken).accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                requestFields(
+                        fieldWithPath("attachmentType").description("The type of Attachment. Possible Values are: "+Arrays.asList(AttachmentType.values())),
+                        fieldWithPath("createdComment").description("The upload Comment of Attachment"),
+                        fieldWithPath("checkStatus").description("The checkStatus of Attachment. Possible Values are: "+Arrays.asList(CheckStatus.values())),
+                        fieldWithPath("checkedComment").description("The checked Comment of Attachment")),
+                responseFields(
+                        fieldWithPath("filename").description("The attachment filename"),
+                        fieldWithPath("sha1").description("The attachment sha1 value"),
+                        fieldWithPath("attachmentType").description("The type of attachment. Possible Values are: "+Arrays.asList(AttachmentType.values())),
+                        fieldWithPath("createdBy").description("The email of user who uploaded the attachment"),
+                        fieldWithPath("createdTeam").description("The department of user who uploaded the attachment"),
+                        fieldWithPath("createdOn").description("The date when attachment was uploaded"),
+                        fieldWithPath("createdComment").description("The upload Comment of attachment"),
+                        fieldWithPath("checkStatus").description("The checkStatus of attachment. Possible Values are: "+Arrays.asList(CheckStatus.values())),
+                        fieldWithPath("checkedComment").description("The checked comment of attachment"),
+                        fieldWithPath("checkedBy").description("The email of user who checked the attachment"),
+                        fieldWithPath("checkedTeam").description("The department of user who checked the attachment"),
+                        fieldWithPath("checkedOn").description("The date when attachment was checked"),
+                        fieldWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                )));
+    }
+
+    @Test
     public void should_document_get_project_attachment() throws Exception {
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         mockMvc.perform(get("/api/projects/" + project.getId() + "/attachments/" + attachment.getAttachmentContentId())
@@ -1166,9 +1227,46 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
     }
 
     @Test
+    public void should_document_link_releases_with_project_release_relation() throws Exception {
+        MockHttpServletRequestBuilder requestBuilder = post("/api/projects/" + project.getId() + "/releases");
+        add_patch_releases_with_project_release_relation(requestBuilder);
+    }
+
+    @Test
     public void should_document_patch_releases() throws Exception {
         MockHttpServletRequestBuilder requestBuilder = patch("/api/projects/" + project.getId() + "/releases");
         add_patch_releases(requestBuilder);
+    }
+
+    @Test
+    public void should_document_patch_releases_with_project_release_relation() throws Exception {
+        MockHttpServletRequestBuilder requestBuilder = patch("/api/projects/" + project.getId() + "/releases");
+        add_patch_releases_with_project_release_relation(requestBuilder);
+    }
+
+    @Test
+    public void should_document_update_project_release_relationship() throws Exception {
+        ProjectReleaseRelationship updateProjectReleaseRelationship = new ProjectReleaseRelationship()
+                .setComment("Test Comment").setMainlineState(MainlineState.SPECIFIC)
+                .setReleaseRelation(ReleaseRelationship.STANDALONE);
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        this.mockMvc
+                .perform(patch("/api/projects/376576/release/3765276512").contentType(MediaTypes.HAL_JSON)
+                        .content(this.objectMapper.writeValueAsString(updateProjectReleaseRelationship))
+                        .header("Authorization", "Bearer " + accessToken).accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                requestFields(
+                        fieldWithPath("releaseRelation").description("The relation of linked release. Possible Values are: "+Arrays.asList(ReleaseRelationship.values())),
+                        fieldWithPath("mainlineState").description("The mainlineState of linked release. Possible Values are: "+Arrays.asList(MainlineState.values())),
+                        fieldWithPath("comment").description("The Comment for linked release")),
+                responseFields(
+                        fieldWithPath("releaseRelation").description("The relation of linked release. Possible Values are: "+Arrays.asList(ReleaseRelationship.values())),
+                        fieldWithPath("mainlineState").description("The mainlineState of linked release. Possible Values are: "+Arrays.asList(MainlineState.values())),
+                        fieldWithPath("comment").description("The Comment for linked release"),
+                        fieldWithPath("createdOn").description("The date when release was linked to project"),
+                        fieldWithPath("createdBy").description("The email of user who linked release to project")
+                )));
     }
 
     @Test
@@ -1252,6 +1350,22 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         this.mockMvc.perform(requestBuilder.contentType(MediaTypes.HAL_JSON)
                 .content(this.objectMapper.writeValueAsString(releaseIds))
+                .header("Authorization", "Bearer " + accessToken)).andExpect(status().isCreated());
+    }
+
+    private void add_patch_releases_with_project_release_relation(MockHttpServletRequestBuilder requestBuilder)
+            throws Exception {
+        ProjectReleaseRelationship projectReleaseRelationship1 = new ProjectReleaseRelationship(
+                ReleaseRelationship.REFERRED, MAINLINE);
+        ProjectReleaseRelationship projectReleaseRelationship2 = new ProjectReleaseRelationship(
+                ReleaseRelationship.STANDALONE, MainlineState.SPECIFIC).setComment("Test Comment 2");
+
+        ImmutableMap<String, ProjectReleaseRelationship> releaseIdToUsage = ImmutableMap
+                .<String, ProjectReleaseRelationship>builder().put("12345", projectReleaseRelationship1)
+                .put("54321", projectReleaseRelationship2).build();
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        this.mockMvc.perform(requestBuilder.contentType(MediaTypes.HAL_JSON)
+                .content(this.objectMapper.writeValueAsString(releaseIdToUsage))
                 .header("Authorization", "Bearer " + accessToken)).andExpect(status().isCreated());
     }
 }

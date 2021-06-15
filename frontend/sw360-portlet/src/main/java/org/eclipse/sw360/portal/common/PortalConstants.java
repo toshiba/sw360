@@ -46,6 +46,8 @@ public class PortalConstants {
     public static final UserGroup USER_ROLE_ALLOWED_TO_MERGE_OR_SPLIT_COMPONENT;
     public static final String CLEARING_REPORT_TEMPLATE_TO_FILENAMEMAPPING;
     public static final String CLEARING_REPORT_TEMPLATE_FORMAT;
+    public static final String LOAD_OPEN_MODERATION_REQUEST = "loadOpenModerationRequest";
+    public static final String LOAD_CLOSED_MODERATION_REQUEST = "loadClosedModerationRequest";
 
     // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING !!!
     // - friendly url mapping files must be changed
@@ -118,8 +120,10 @@ public class PortalConstants {
     public static final String MODERATION_REQUEST = "moderationRequest";
     public static final String MODERATION_REQUESTS = "moderationRequests";
     public static final String CLOSED_MODERATION_REQUESTS = "closedModerationRequests";
+    public static final String OPEN_MODERATION_REQUESTS = "openModerationRequests";
     public static final String DELETE_MODERATION_REQUEST = "deleteModerationRequest";
     public static final String MODERATION_ACTIONS_ALLOWED = "moderationAllowed";
+    public static final String MODERATION_REQUESTING_USER_DEPARTMENTS = "requestingUserDepartments";
 
     //! Specialized keys for clearing
     public static final String CLEARING_REQUEST = "clearingRequest";
@@ -296,6 +300,9 @@ public class PortalConstants {
 
     public static final String FOSSOLOGY_PORTLET_NAME = PORTLET_NAME_PREFIX + "fossology";
     public static final String USER_LIST = "userList";
+    public static final String SECONDARY_GROUPS_LIST = "secGrpsKeys";
+    public static final String EDIT_SECONDARY_GROUP_FOR_USER = "editSecondaryGroupForUser";
+    public static final String SECONDARY_ROLES_OPTIONS = "secondaryRolesOptions";
     public static final String MISSING_USER_LIST = "missingUserList";
     public static final String GET_CLEARING_STATE_SUMMARY = "getClearingStateSummary";
     public static final String PROJECT_LINK_TABLE_MODE = "projectLinkTableMode";
@@ -351,6 +358,11 @@ public class PortalConstants {
     public static final String CVESEARCH_OFFSET = "cvesearchOffset";
     public static final String CVESEARCH_INTERVAL = "cvesearchInterval";
     public static final String CVESEARCH_NEXT_SYNC = "cvesearchNextSync";
+
+    public static final String DELETE_ATTACHMENT_IS_SCHEDULED = "deleteAttachmentIsScheduled";
+    public static final String DELETE_ATTACHMENT_OFFSET = "deleteAttachmentOffset";
+    public static final String DELETE_ATTACHMENT_INTERVAL = "deleteAttachmentInterval";
+    public static final String DELETE_ATTACHMENT_NEXT_SYNC = "deleteAttachmentNextSync";
 
     //! Specialized keys for licenseInfo
     public static final String LICENSE_INFO_OUTPUT_FORMATS = "licenseInfoOutputFormats";
@@ -474,6 +486,8 @@ public class PortalConstants {
     public static final String LIST_CLEARING_STATUS = "listClearingStatus";
     public static final String CLEARING_STATUS_ON_LOAD = "clearingStatusOnLoad";
     public static final String PROJECT_CHECK_FOR_ATTACHMENTS = "verifyAttachmentExistance";
+    public static final String LICENSE_TO_SOURCE_FILE = "licenseToSourceFile";
+    public static final String ADD_LICENSE_TO_RELEASE = "addLicenseToRelease";
 
     //component actions
     public static final String ADD_VENDOR = "add_vendor";

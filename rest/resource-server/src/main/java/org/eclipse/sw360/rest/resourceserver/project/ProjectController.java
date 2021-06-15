@@ -262,8 +262,8 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
     @RequestMapping(value = PROJECTS_URL + "/{id}/releases", method = RequestMethod.POST)
     public ResponseEntity linkReleases(
             @PathVariable("id") String id,
-            @RequestBody List<String> releaseURIs) throws URISyntaxException, TException {
-        RequestStatus linkReleasesStatus = addOrPatchReleasesToProject(id, releaseURIs, false);
+            @RequestBody Object releasesInRequestBody) throws URISyntaxException, TException {
+        RequestStatus linkReleasesStatus = addOrPatchReleasesToProject(id, releasesInRequestBody, false);
         HttpStatus status = HttpStatus.CREATED;
         if (linkReleasesStatus == RequestStatus.SENT_TO_MODERATOR) {
             return new ResponseEntity<>(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
@@ -273,7 +273,7 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
 
     @PreAuthorize("hasAuthority('WRITE')")
     @RequestMapping(value = PROJECTS_URL + "/{id}/releases", method = RequestMethod.PATCH)
-    public ResponseEntity patchReleases(@PathVariable("id") String id, @RequestBody List<String> releaseURIs)
+    public ResponseEntity patchReleases(@PathVariable("id") String id, @RequestBody Object releaseURIs)
             throws URISyntaxException, TException {
         RequestStatus patchReleasesStatus = addOrPatchReleasesToProject(id, releaseURIs, true);
         if (patchReleasesStatus == RequestStatus.SENT_TO_MODERATOR) {
@@ -479,6 +479,25 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
         return new ResponseEntity<>(resources, status);
     }
 
+    @PreAuthorize("hasAuthority('WRITE')")
+    @RequestMapping(value = PROJECTS_URL + "/{id}/release/{releaseId}", method = RequestMethod.PATCH)
+    public ResponseEntity<Resource<ProjectReleaseRelationship>> patchProjectReleaseUsage(
+            @PathVariable("id") String id, @PathVariable("releaseId") String releaseId,
+            @RequestBody ProjectReleaseRelationship requestBodyProjectReleaseRelationship) throws TException {
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        final Project sw360Project = projectService.getProjectForUserById(id, sw360User);
+        Map<String, ProjectReleaseRelationship> releaseIdToUsage = sw360Project.getReleaseIdToUsage();
+        ProjectReleaseRelationship updatedProjectReleaseRelationship = projectService
+                .updateProjectReleaseRelationship(releaseIdToUsage, requestBodyProjectReleaseRelationship, releaseId);
+        RequestStatus updateProjectStatus = projectService.updateProject(sw360Project, sw360User);
+        if (updateProjectStatus == RequestStatus.SENT_TO_MODERATOR) {
+            return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
+        }
+        Resource<ProjectReleaseRelationship> updatedProjectReleaseRelationshipResource = new Resource<>(
+                updatedProjectReleaseRelationship);
+        return new ResponseEntity<>(updatedProjectReleaseRelationshipResource, HttpStatus.OK);
+    }
+
     public ProjectVulnerabilityRating updateProjectVulnerabilityRatingFromRequest(Optional<ProjectVulnerabilityRating> projectVulnerabilityRatings, List<VulnerabilityDTO> vulDtoList, String projectId, User sw360User) {
         Function<VulnerabilityDTO, VulnerabilityCheckStatus> fillVulnerabilityCheckStatus = vulDto -> {
             return new VulnerabilityCheckStatus().setCheckedBy(sw360User.getEmail())
@@ -638,6 +657,23 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
         final Project sw360Project = projectService.getProjectForUserById(id, sw360User);
         final Resources<Resource<Attachment>> resources = attachmentService.getResourcesFromList(sw360Project.getAttachments());
         return new ResponseEntity<>(resources, HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('WRITE')")
+    @RequestMapping(value = PROJECTS_URL + "/{id}/attachment/{attachmentId}", method = RequestMethod.PATCH)
+    public ResponseEntity<Resource<Attachment>> patchProjectAttachmentInfo(@PathVariable("id") String id,
+            @PathVariable("attachmentId") String attachmentId, @RequestBody Attachment attachmentData)
+            throws TException {
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        final Project sw360Project = projectService.getProjectForUserById(id, sw360User);
+        Set<Attachment> attachments = sw360Project.getAttachments();
+        Attachment updatedAttachment = attachmentService.updateAttachment(attachments, attachmentData, attachmentId, sw360User);
+        RequestStatus updateProjectStatus = projectService.updateProject(sw360Project, sw360User);
+        if (updateProjectStatus == RequestStatus.SENT_TO_MODERATOR) {
+            return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
+        }
+        Resource<Attachment> attachmentResource = new Resource<>(updatedAttachment);
+        return new ResponseEntity<>(attachmentResource, HttpStatus.OK);
     }
 
     @RequestMapping(value = PROJECTS_URL + "/{projectId}/attachments/{attachmentId}", method = RequestMethod.GET, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -824,7 +860,7 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
         return halProject;
     }
 
-    private RequestStatus addOrPatchReleasesToProject(String id, List<String> releaseURIs, boolean patch)
+    private RequestStatus addOrPatchReleasesToProject(String id, Object releasesInRequestBody, boolean patch)
             throws URISyntaxException, TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         Project project = projectService.getProjectForUserById(id, sw360User);
@@ -833,12 +869,41 @@ public class ProjectController implements ResourceProcessor<RepositoryLinksResou
             releaseIdToUsage = project.getReleaseIdToUsage();
         }
 
-        for (String releaseURIString : releaseURIs) {
-            URI releaseURI = new URI(releaseURIString);
-            String path = releaseURI.getPath();
-            String releaseId = path.substring(path.lastIndexOf('/') + 1);
-            releaseIdToUsage.put(releaseId,
-                    new ProjectReleaseRelationship(ReleaseRelationship.CONTAINED, MainlineState.OPEN));
+        if (releasesInRequestBody instanceof List) {
+            List<String> releasesAsList = (List<String>) releasesInRequestBody;
+            for (String release : releasesAsList) {
+                URI releaseURI = new URI(release.toString());
+                String path = releaseURI.getPath();
+                String releaseId = path.substring(path.lastIndexOf('/') + 1);
+                releaseIdToUsage.put(releaseId,
+                        new ProjectReleaseRelationship(ReleaseRelationship.CONTAINED, MainlineState.OPEN));
+            }
+        } else if (releasesInRequestBody instanceof Map) {
+            Map<String, Map> releaseAsMap = (Map<String, Map>) releasesInRequestBody;
+            for (Entry<String, Map> entry : releaseAsMap.entrySet()) {
+                String releaseId = entry.getKey();
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                mapper.registerModule(sw360Module);
+                ProjectReleaseRelationship requestBodyProjectReleaseRelationship = mapper.convertValue(entry.getValue(),
+                        ProjectReleaseRelationship.class);
+                ProjectReleaseRelationship actualProjectReleaseRelationship = null;
+
+                if (patch && releaseIdToUsage.containsKey(releaseId)) {
+                    actualProjectReleaseRelationship = releaseIdToUsage.get(releaseId);
+                } else {
+                    actualProjectReleaseRelationship = new ProjectReleaseRelationship(ReleaseRelationship.CONTAINED,
+                            MainlineState.OPEN).setCreatedBy(sw360User.getEmail())
+                                    .setCreatedOn(SW360Utils.getCreatedOn());
+                }
+
+                restControllerHelper.updateProjectReleaseRelationship(actualProjectReleaseRelationship,
+                        requestBodyProjectReleaseRelationship);
+                releaseIdToUsage.put(releaseId, actualProjectReleaseRelationship);
+            }
+        } else {
+            throw new HttpMessageNotReadableException(
+                    "Request body should be List of valid release id or map of release id to usage");
         }
         project.setReleaseIdToUsage(releaseIdToUsage);
         return projectService.updateProject(project, sw360User);

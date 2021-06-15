@@ -28,10 +28,10 @@ import org.eclipse.sw360.datahandler.thrift.projects.ObligationList;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectRelationship;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectService;
 import org.eclipse.sw360.datahandler.thrift.projects.UsedReleaseRelations;
-import org.eclipse.sw360.datahandler.thrift.ThriftClients;
-import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseInfoService;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.ektorp.http.HttpClient;
+
+import com.cloudant.client.api.CloudantClient;
 
 import java.io.IOException;
 import java.util.List;
@@ -57,13 +57,18 @@ public class ProjectHandler implements ProjectService.Iface {
     private final ProjectSearchHandler searchHandler;
 
     ProjectHandler() throws IOException {
-        handler = new ProjectDatabaseHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.COUCH_DB_DATABASE, DatabaseSettings.COUCH_DB_ATTACHMENTS);
-        searchHandler = new ProjectSearchHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.COUCH_DB_DATABASE);
+        handler = new ProjectDatabaseHandler(DatabaseSettings.getConfiguredClient(), DatabaseSettings.COUCH_DB_DATABASE, DatabaseSettings.COUCH_DB_ATTACHMENTS);
+        searchHandler = new ProjectSearchHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.getConfiguredClient(), DatabaseSettings.COUCH_DB_DATABASE);
     }
 
-    ProjectHandler(Supplier<HttpClient> httpClient, String dbName, String attchmntDbName) throws IOException {
+    ProjectHandler(Supplier<CloudantClient> httpClient, String dbName, String attchmntDbName) throws IOException {
         handler = new ProjectDatabaseHandler(httpClient, dbName, attchmntDbName);
-        searchHandler = new ProjectSearchHandler(httpClient, dbName);
+        searchHandler = new ProjectSearchHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.getConfiguredClient(), dbName);
+    }
+
+    ProjectHandler(Supplier<CloudantClient> cClient,Supplier<HttpClient> hClient, String dbName, String changeLogsDbName, String attchmntDbName) throws IOException {
+        handler = new ProjectDatabaseHandler(cClient, dbName, changeLogsDbName, attchmntDbName);
+        searchHandler = new ProjectSearchHandler(hClient, cClient, dbName);
     }
 
     /////////////////////

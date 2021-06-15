@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -783,8 +784,13 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 request.setAttribute(COMPONENT_PURL, "");
             }
 
+            Set<UserGroup> allSecRoles = !CommonUtils.isNullOrEmptyMap(user.getSecondaryDepartmentsAndRoles())
+                    ? user.getSecondaryDepartmentsAndRoles().entrySet().stream().flatMap(entry -> entry.getValue().stream()).collect(Collectors.toSet())
+                    : new HashSet<UserGroup>();
+
             request.setAttribute(COMPONENT, component);
-            request.setAttribute(IS_USER_AT_LEAST_ECC_ADMIN, PermissionUtils.isUserAtLeast(UserGroup.ECC_ADMIN, user) ? "Yes" : "No");
+            request.setAttribute(IS_USER_AT_LEAST_ECC_ADMIN, PermissionUtils.isUserAtLeast(UserGroup.ECC_ADMIN, user)
+                    || PermissionUtils.isUserAtLeastDesiredRoleInSecondaryGroup(UserGroup.ECC_ADMIN, allSecRoles) ? "Yes" : "No");
 
         } catch (TException e) {
             log.error("Error fetching release from backend!", e);
@@ -1297,8 +1303,13 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 request.setAttribute(IS_USER_ALLOWED_TO_MERGE, PermissionUtils.isUserAtLeast(USER_ROLE_ALLOWED_TO_MERGE_OR_SPLIT_COMPONENT, user));
 
                 // get vulnerabilities
-                putVulnerabilitiesInRequestComponent(request, id, user);
-                request.setAttribute(VULNERABILITY_VERIFICATION_EDITABLE, PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user));
+                Set<UserGroup> allSecRoles = !CommonUtils.isNullOrEmptyMap(user.getSecondaryDepartmentsAndRoles())
+                        ? user.getSecondaryDepartmentsAndRoles().entrySet().stream().flatMap(entry -> entry.getValue().stream()).collect(Collectors.toSet())
+                        : new HashSet<UserGroup>();
+                boolean isVulEditable = PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user)
+                        || PermissionUtils.isUserAtLeastDesiredRoleInSecondaryGroup(UserGroup.SECURITY_ADMIN, allSecRoles);
+                putVulnerabilitiesInRequestComponent(request, id, user, isVulEditable);
+                request.setAttribute(VULNERABILITY_VERIFICATION_EDITABLE, isVulEditable);
 
                 addComponentBreadcrumb(request, response, component);
             } catch (TException e) {
@@ -1374,9 +1385,13 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 if (isNullOrEmpty(id)) {
                     id = release.getComponentId();
                 }
-
-                putVulnerabilitiesInRequestRelease(request, releaseId, user);
-                request.setAttribute(VULNERABILITY_VERIFICATION_EDITABLE, PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user));
+                Set<UserGroup> allSecRoles = !CommonUtils.isNullOrEmptyMap(user.getSecondaryDepartmentsAndRoles())
+                        ? user.getSecondaryDepartmentsAndRoles().entrySet().stream().flatMap(entry -> entry.getValue().stream()).collect(Collectors.toSet())
+                        : new HashSet<UserGroup>();
+                boolean isVulEditable = PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user)
+                        || PermissionUtils.isUserAtLeastDesiredRoleInSecondaryGroup(UserGroup.SECURITY_ADMIN, allSecRoles);
+                putVulnerabilitiesInRequestRelease(request, releaseId, user, isVulEditable);
+                request.setAttribute(VULNERABILITY_VERIFICATION_EDITABLE, isVulEditable);
             }
 
             component = client.getComponentById(id, user);
@@ -1443,10 +1458,10 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 e -> e.getComment());
     }
 
-    private void putVulnerabilitiesInRequestRelease(RenderRequest request, String releaseId, User user) throws TException {
+    private void putVulnerabilitiesInRequestRelease(RenderRequest request, String releaseId, User user, boolean isVulEditable) throws TException {
         VulnerabilityService.Iface vulClient = thriftClients.makeVulnerabilityClient();
         List<VulnerabilityDTO> vuls;
-        if (PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user)) {
+        if (isVulEditable) {
             vuls = vulClient.getVulnerabilitiesByReleaseId(releaseId, user);
         } else {
             vuls = vulClient.getVulnerabilitiesByReleaseIdWithoutIncorrect(releaseId, user);
@@ -1455,10 +1470,10 @@ public class ComponentPortlet extends FossologyAwarePortlet {
         putVulnerabilitiesInRequest(request, vuls, user);
     }
 
-    private void putVulnerabilitiesInRequestComponent(RenderRequest request, String componentId, User user) throws TException{
+    private void putVulnerabilitiesInRequestComponent(RenderRequest request, String componentId, User user, boolean isVulEditable) throws TException{
         VulnerabilityService.Iface vulClient = thriftClients.makeVulnerabilityClient();
         List<VulnerabilityDTO> vuls;
-        if (PermissionUtils.isUserAtLeast(UserGroup.SECURITY_ADMIN, user)) {
+        if (isVulEditable) {
             vuls = vulClient.getVulnerabilitiesByComponentId(componentId, user);
         } else {
             vuls = vulClient.getVulnerabilitiesByComponentIdWithoutIncorrect(componentId, user);
@@ -1506,7 +1521,11 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 .collect(Collectors.toSet())
                 .size();
         request.setAttribute(NUMBER_OF_CHECKED_OR_UNCHECKED_VULNERABILITIES, numberOfCorrectVuls);
-        if (PermissionUtils.isAdmin(UserCacheHolder.getUserFromRequest(request))) {
+        User userFromRequest = UserCacheHolder.getUserFromRequest(request);
+        Set<UserGroup> allSecRoles = !CommonUtils.isNullOrEmptyMap(userFromRequest.getSecondaryDepartmentsAndRoles())
+                ? userFromRequest.getSecondaryDepartmentsAndRoles().entrySet().stream().flatMap(entry -> entry.getValue().stream()).collect(Collectors.toSet())
+                : new HashSet<UserGroup>();
+        if (PermissionUtils.isAdmin(userFromRequest) || PermissionUtils.isAdminBySecondaryRoles(allSecRoles)) {
             long numberOfIncorrectVuls = vuls.stream()
                     .filter(v -> VerificationState.INCORRECT.equals(getVerificationState(v)))
                     .map(VulnerabilityDTO::getExternalId)
@@ -1966,12 +1985,26 @@ public class ComponentPortlet extends FossologyAwarePortlet {
         HttpServletRequest originalServletRequest = PortalUtil.getOriginalServletRequest(PortalUtil.getHttpServletRequest(request));
         PaginationParameters paginationParameters = PaginationParser.parametersFrom(originalServletRequest);
         handlePaginationSortOrder(request, paginationParameters);
-        List<Component> componentList = getFilteredComponentList(request);
+        PaginationData pageData = new PaginationData();
+        pageData.setRowsPerPage(paginationParameters.getDisplayLength());
+        pageData.setDisplayStart(paginationParameters.getDisplayStart());
+        pageData.setAscending(paginationParameters.isAscending().get());
+        int sortParam = -1;
+        if (paginationParameters.getSortingColumn().isPresent()) {
+            sortParam = paginationParameters.getSortingColumn().get();
+            if (sortParam == 1 && Integer.valueOf(paginationParameters.getEcho()) == 1) {
+                pageData.setSortColumnNumber(-1);
+            }
+        } else {
+            pageData.setSortColumnNumber(sortParam);
+        }
 
-        JSONArray jsonComponents = getComponentData(componentList, paginationParameters);
+        Map<PaginationData, List<Component>> pageDataComponentList = getFilteredComponentList(request, pageData);
+
+        JSONArray jsonComponents = getComponentData(pageDataComponentList.values().iterator().next(), paginationParameters);
         JSONObject jsonResult = createJSONObject();
-        jsonResult.put(DATATABLE_RECORDS_TOTAL, componentList.size());
-        jsonResult.put(DATATABLE_RECORDS_FILTERED, componentList.size());
+        jsonResult.put(DATATABLE_RECORDS_TOTAL, pageDataComponentList.keySet().iterator().next().getTotalRowCount());
+        jsonResult.put(DATATABLE_RECORDS_FILTERED, pageDataComponentList.keySet().iterator().next().getTotalRowCount());
         jsonResult.put(DATATABLE_DISPLAY_DATA, jsonComponents);
 
         try {
@@ -1981,6 +2014,29 @@ public class ComponentPortlet extends FossologyAwarePortlet {
             response.setProperty(ResourceResponse.HTTP_STATUS_CODE, "500");
         }
     }
+
+    private Map<PaginationData, List<Component>> getFilteredComponentList(PortletRequest request, PaginationData pageData) {
+        Map<String, Set<String>> filterMap = getComponentFilterMap(request);
+        List<Component> componentList;
+        Map<PaginationData, List<Component>> pageDataComponents = Maps.newHashMap();
+
+        try {
+            final User user = UserCacheHolder.getUserFromRequest(request);
+            ComponentService.Iface componentClient = thriftClients.makeComponentClient();
+            if (filterMap.isEmpty()) {
+                pageDataComponents = componentClient.getRecentComponentsSummaryWithPagination(user, pageData);
+            } else {
+                componentList = componentClient.refineSearch(null, filterMap);
+                pageDataComponents.put(pageData.setTotalRowCount(componentList.size()), componentList);
+            }
+        } catch (TException e) {
+            log.error("Could not search components in backend ", e);
+            pageDataComponents = Collections.emptyMap();
+        }
+
+        return pageDataComponents;
+    }
+
 
     private void linkReleaseToProject(ResourceRequest request, ResourceResponse response) throws IOException {
         User user = UserCacheHolder.getUserFromRequest(request);
@@ -2026,7 +2082,7 @@ public class ComponentPortlet extends FossologyAwarePortlet {
         VendorService.Iface vendorClient = thriftClients.makeVendorClient();
 
         JSONArray componentData = createJSONArray();
-        for (int i = componentParameters.getDisplayStart(); i < count; i++) {
+        for (int i = 0; i < count; i++) {
             JSONObject jsonObject = JSONFactoryUtil.createJSONObject();
             Component comp = sortedComponents.get(i);
             jsonObject.put("id", comp.getId());

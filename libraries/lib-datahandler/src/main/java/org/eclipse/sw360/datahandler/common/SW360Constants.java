@@ -47,6 +47,10 @@ public class SW360Constants {
     public static final String LICENSE_NAME_UNKNOWN = "License name unknown";
     public static final String OBLIGATION_TOPIC_UNKNOWN = "Obligation topic unknown";
     public static final String NO_ASSERTION = "noassertion";
+    public static final String STATUS = "status";
+    public static final String SUCCESS = "success";
+    public static final String FAILURE = "failure";
+    public static final String MESSAGE = "message";
     // Proper values of the "type" member to deserialize to CouchDB
     public static final String TYPE_OBLIGATION = "obligation";
     public static final String TYPE_OBLIGATIONS = "obligations";
@@ -80,7 +84,7 @@ public class SW360Constants {
                     .put(TYPE_VENDOR, "fullname")
                     .put(TYPE_COMPONENT, "name")
                     .put(TYPE_RELEASE, "name version")
-                    .put(TYPE_PROJECT, "name")
+                    .put(TYPE_PROJECT, "name version")
                     .build();
 
     public static final Collection<AttachmentType> LICENSE_INFO_ATTACHMENT_TYPES = Arrays.asList(AttachmentType.COMPONENT_LICENSE_INFO_XML, AttachmentType.COMPONENT_LICENSE_INFO_COMBINED);

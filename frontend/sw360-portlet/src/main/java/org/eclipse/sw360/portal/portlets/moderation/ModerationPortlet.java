@@ -9,10 +9,15 @@
  */
 package org.eclipse.sw360.portal.portlets.moderation;
 
-import com.fasterxml.jackson.core.JsonFactory;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Organization;
@@ -20,11 +25,17 @@ import com.liferay.portal.kernel.servlet.SessionMessages;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
 
+import org.eclipse.sw360.commonIO.SampleOptions;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.common.SW360Constants;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
+import org.eclipse.sw360.datahandler.common.ThriftEnumUtils;
+import org.eclipse.sw360.datahandler.couchdb.lucene.LuceneAwareDatabaseConnector;
 import org.eclipse.sw360.datahandler.permissions.PermissionUtils;
+import org.eclipse.sw360.datahandler.thrift.DateRange;
+import org.eclipse.sw360.datahandler.permissions.DocumentPermissions;
 import org.eclipse.sw360.datahandler.thrift.ModerationState;
+import org.eclipse.sw360.datahandler.thrift.PaginationData;
 import org.eclipse.sw360.datahandler.thrift.RemoveModeratorRequestStatus;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
@@ -55,11 +66,14 @@ import org.eclipse.sw360.portal.common.PortalConstants;
 import org.eclipse.sw360.portal.common.PortletUtils;
 import org.eclipse.sw360.portal.common.ThriftJsonSerializer;
 import org.eclipse.sw360.portal.common.UsedAsLiferayAction;
+import org.eclipse.sw360.portal.common.datatables.PaginationParser;
+import org.eclipse.sw360.portal.common.datatables.data.PaginationParameters;
 import org.eclipse.sw360.portal.portlets.FossologyAwarePortlet;
 import org.eclipse.sw360.portal.users.UserCacheHolder;
 import org.eclipse.sw360.portal.users.UserUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.thrift.TEnum;
 import org.apache.thrift.TException;
 import org.jetbrains.annotations.NotNull;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -68,14 +82,20 @@ import javax.portlet.*;
 import javax.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+import static com.google.common.base.Strings.nullToEmpty;
 import static com.liferay.portal.kernel.json.JSONFactoryUtil.createJSONArray;
 import static com.liferay.portal.kernel.json.JSONFactoryUtil.createJSONObject;
+import static org.eclipse.sw360.datahandler.common.CommonUtils.isNotNullEmptyOrWhitespace;
+import static org.eclipse.sw360.datahandler.common.CommonUtils.isNullEmptyOrWhitespace;
 import static org.eclipse.sw360.datahandler.common.CommonUtils.nullToEmptySet;
 import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
 import static org.eclipse.sw360.portal.common.PortalConstants.*;
+import static org.eclipse.sw360.datahandler.common.WrappedException.wrapTException;
 
 @org.osgi.service.component.annotations.Component(
     immediate = true,
@@ -98,7 +118,16 @@ import static org.eclipse.sw360.portal.common.PortalConstants.*;
 public class ModerationPortlet extends FossologyAwarePortlet {
 
     private static final Logger log = LogManager.getLogger(ModerationPortlet.class);
-    private static final JsonFactory JSON_FACTORY = new JsonFactory();
+    private static final ImmutableList<ModerationRequest._Fields> MODERATION_FILTERED_FIELDS = ImmutableList.of(
+            ModerationRequest._Fields.TIMESTAMP,
+            ModerationRequest._Fields.COMPONENT_TYPE,
+            ModerationRequest._Fields.DOCUMENT_NAME,
+            ModerationRequest._Fields.REQUESTING_USER,
+            ModerationRequest._Fields.REQUESTING_USER_DEPARTMENT,
+            ModerationRequest._Fields.MODERATORS,
+            ModerationRequest._Fields.MODERATION_STATE);
+
+    private static final int MODERATION_NO_SORT = -1;
 
     @Override
     public void serveResource(ResourceRequest request, ResourceResponse response) throws IOException, PortletException {
@@ -119,7 +148,164 @@ public class ModerationPortlet extends FossologyAwarePortlet {
             JSONObject dataForChangeLogs = changeLogsPortletUtilsPortletUtils.serveResourceForChangeLogs(request,
                     response, action);
             writeJSON(request, response, dataForChangeLogs);
+        } else if (PortalConstants.LOAD_OPEN_MODERATION_REQUEST.equals(action)) {
+            serveModerationList(request, response, true);
+        } else if (PortalConstants.LOAD_CLOSED_MODERATION_REQUEST.equals(action)) {
+            serveModerationList(request, response, false);
         }
+    }
+
+    private void serveModerationList(ResourceRequest request, ResourceResponse response, boolean open) {
+        HttpServletRequest originalServletRequest = PortalUtil
+                .getOriginalServletRequest(PortalUtil.getHttpServletRequest(request));
+        PaginationParameters paginationParameters = PaginationParser.parametersFrom(originalServletRequest);
+        PortletUtils.handlePaginationSortOrder(request, paginationParameters, MODERATION_FILTERED_FIELDS,
+                MODERATION_NO_SORT);
+        PaginationData pageData = new PaginationData();
+        pageData.setRowsPerPage(paginationParameters.getDisplayLength());
+        pageData.setDisplayStart(paginationParameters.getDisplayStart());
+        pageData.setAscending(paginationParameters.isAscending().get());
+        if(paginationParameters.getSortingColumn().isPresent()) {
+            int sortParam = paginationParameters.getSortingColumn().get();
+            if(sortParam == 0 &&  Integer.valueOf(paginationParameters.getEcho()) == 1) {
+                pageData.setSortColumnNumber(-1);
+            } else {
+                pageData.setSortColumnNumber(paginationParameters.getSortingColumn().get());
+            }
+        } else {
+            pageData.setSortColumnNumber(-1);
+        }
+        Map<PaginationData, List<ModerationRequest>> modRequestsWithPageData = getFilteredModerationList(request,
+                pageData, open);
+        List<ModerationRequest> moderations = new ArrayList<>();
+        PaginationData pgDt = new PaginationData();
+        if (!CommonUtils.isNullOrEmptyMap(modRequestsWithPageData)) {
+            moderations = modRequestsWithPageData.values().iterator().next();
+            pgDt = modRequestsWithPageData.keySet().iterator().next();
+        }
+        JSONArray jsonOpenModerations = getModerationData(moderations, paginationParameters, request, open);
+        JSONObject jsonResult = createJSONObject();
+        final Map<String, Long> countByModerationState = getCountByModerationState(request);
+        long openModRequestCount = countByModerationState.get("OPEN") == null ? 0
+                : countByModerationState.get("OPEN");
+        long closedModRequestCount = countByModerationState.get("CLOSED") == null ? 0
+                : countByModerationState.get("CLOSED");
+        Map<String, Set<String>> filterMap = getModerationFilterMap(request);
+        long noOfRecords = filterMap.isEmpty() ? (open ? openModRequestCount : closedModRequestCount)
+                : pgDt.getTotalRowCount();
+        jsonResult.put(DATATABLE_RECORDS_TOTAL, noOfRecords);
+        jsonResult.put(DATATABLE_RECORDS_FILTERED, noOfRecords);
+        jsonResult.put(DATATABLE_DISPLAY_DATA, jsonOpenModerations);
+        jsonResult.put(CLOSED_MODERATION_REQUESTS, closedModRequestCount);
+        jsonResult.put(OPEN_MODERATION_REQUESTS, openModRequestCount);
+        jsonResult.put(MODERATION_REQUESTING_USER_DEPARTMENTS, getRequestingUserDepts());
+        try {
+            writeJSON(request, response, jsonResult);
+        } catch (IOException e) {
+            log.error("Problem rendering list of open moderation", e);
+        }
+    }
+
+    private Map<String, Long> getCountByModerationState(ResourceRequest request) {
+        Map<String, Long> countByModerationState = Maps.newHashMap();
+        ModerationService.Iface client = thriftClients.makeModerationClient();
+        User user = UserCacheHolder.getUserFromRequest(request);
+        try {
+            countByModerationState = client.getCountByModerationState(user);
+        } catch (TException e) {
+            log.error("Error geeting moderation requests count", e);
+        }
+        return countByModerationState;
+    }
+
+    private Set<String> getRequestingUserDepts() {
+        Set<String> requestingUserDepts = Sets.newHashSet();
+        ModerationService.Iface client = thriftClients.makeModerationClient();
+        try {
+            requestingUserDepts = client.getRequestingUserDepts();
+        } catch (TException e) {
+            log.error("Error geeting requesting user departments", e);
+        }
+        return requestingUserDepts;
+    }
+
+    private JSONArray getModerationData(List<ModerationRequest> moderationList,
+            PaginationParameters paginationParameters, ResourceRequest request, boolean open) {
+        Map<String, Set<String>> filterMap = getModerationFilterMap(request);
+        int count = PortletUtils.getProjectDataCount(paginationParameters, moderationList.size());
+        User user = UserCacheHolder.getUserFromRequest(request);
+        boolean isClearingAdmin = PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user);
+        JSONArray moderationRequestData = createJSONArray();
+        final int start = filterMap.isEmpty() ? 0 : paginationParameters.getDisplayStart();
+        for (int i = start; i < count; i++) {
+            JSONObject jsonObject = JSONFactoryUtil.createJSONObject();
+            ModerationRequest modreq = moderationList.get(i);
+            jsonObject.put("id", modreq.getId());
+            jsonObject.put("renderTimestamp", modreq.getTimestamp() + "");
+            jsonObject.put("componentType", printEnumValueWithTooltip(request, modreq.getComponentType()));
+            jsonObject.put("documentName", modreq.getDocumentName());
+            jsonObject.put("requestingUser", UserUtils.displayUser(modreq.getRequestingUser(), null));
+            jsonObject.put("requestingUserDepartment", modreq.getRequestingUserDepartment());
+            jsonObject.put("moderators", displayUserCollection(modreq.getModerators()));
+            jsonObject.put("moderationState", printEnumValueWithTooltip(request, modreq.getModerationState()));
+            if (!open) {
+                jsonObject.put("isClearingAdmin", isClearingAdmin);
+            }
+            moderationRequestData.put(jsonObject);
+        }
+
+        return moderationRequestData;
+    }
+
+    private String displayUserCollection(Set<String> values) {
+        if (!CommonUtils.isNotEmpty(values)) {
+            return "";
+        }
+        List<String> valueList = new ArrayList<String>(values);
+        Collections.sort(valueList, String.CASE_INSENSITIVE_ORDER);
+        List<String> resultList = new ArrayList<>();
+
+        for (String email : valueList) {
+            if (!Strings.isNullOrEmpty(email)) {
+                resultList.add(UserUtils.displayUser(email, null));
+            }
+        }
+        return CommonUtils.COMMA_JOINER.join(resultList);
+    }
+
+    private String printEnumValueWithTooltip(ResourceRequest request, TEnum value) {
+        if (value == null) {
+            return "";
+        }
+        ResourceBundle resourceBundle = ResourceBundleUtil.getBundle("content.Language", request.getLocale(),
+                getClass());
+        return "<span class='" + PortalConstants.TOOLTIP_CLASS__CSS + " " + PortalConstants.TOOLTIP_CLASS__CSS + "-"
+                + value.getClass().getSimpleName() + "-" + value.toString() + "' data-content='"
+                + LanguageUtil.get(resourceBundle, value.getClass().getSimpleName() + "-" + value.toString()) + "'>"
+                + LanguageUtil.get(resourceBundle, ThriftEnumUtils.enumToString(value).replace(' ', '.').toLowerCase())
+                + "</span>";
+    }
+
+    private Map<PaginationData, List<ModerationRequest>> getFilteredModerationList(PortletRequest request, PaginationData pageData, boolean open) {
+        ModerationService.Iface client = thriftClients.makeModerationClient();
+        Map<String, Set<String>> filterMap = getModerationFilterMap(request);
+        User user = UserCacheHolder.getUserFromRequest(request);
+        Map<PaginationData, List<ModerationRequest>> moderationRequestsWithPageData = Maps.newHashMap();
+        try {
+            if (filterMap.isEmpty()) {
+                moderationRequestsWithPageData = client.getRequestsByModeratorWithPagination(user, pageData, open);
+            } else {
+                List<ModerationRequest> moderations = client.refineSearch(null, filterMap);
+                moderations = moderations.stream().filter(mr -> mr.getModerators().contains(user.getEmail())).collect(Collectors.toList());
+                Map<Boolean, List<ModerationRequest>> partitionedModerationRequests = moderations.stream()
+                        .collect(Collectors.groupingBy(ModerationPortletUtils::isOpenModerationRequest));
+                List<ModerationRequest> requests = CommonUtils.nullToEmptyList(partitionedModerationRequests.get(open));
+                moderationRequestsWithPageData.put(pageData.setTotalRowCount(requests.size()), requests);
+            }
+        } catch (TException e) {
+            log.error("Could not fetch moderation requests from backend!", e);
+        }
+        return moderationRequestsWithPageData;
     }
 
     private void serveDeleteModerationRequest(ResourceRequest request, ResourceResponse response) throws IOException {
@@ -278,15 +464,27 @@ public class ModerationPortlet extends FossologyAwarePortlet {
                 clearingRequest = client.getClearingRequestById(clearingId, user);
             }
             clearingRequest.setComments(Lists.reverse(CommonUtils.nullToEmptyList(clearingRequest.getComments())));
+            boolean isPrimaryRoleOfUserAtLeastClearingExpert = PermissionUtils.isUserAtLeast(UserGroup.CLEARING_EXPERT,
+                    user);
             request.setAttribute(CLEARING_REQUEST, clearingRequest);
             request.setAttribute(WRITE_ACCESS_USER, false);
-            request.setAttribute(IS_CLEARING_EXPERT, PermissionUtils.isUserAtLeast(UserGroup.CLEARING_EXPERT, user));
+            request.setAttribute(IS_CLEARING_EXPERT, isPrimaryRoleOfUserAtLeastClearingExpert);
 
             if (CommonUtils.isNotNullEmptyOrWhitespace(clearingRequest.getProjectId()) ) {
                 ProjectService.Iface projectClient = thriftClients.makeProjectClient();
                 Project project = projectClient.getProjectById(clearingRequest.getProjectId(), UserCacheHolder.getUserFromRequest(request));
                 request.setAttribute(PROJECT, project);
-                request.setAttribute(WRITE_ACCESS_USER, makePermission(project, user).isActionAllowed(RequestedAction.WRITE));
+
+                DocumentPermissions<Project> projectPermission = makePermission(project, user);
+                ImmutableSet<UserGroup> clearingExpertRoles = ImmutableSet.of(UserGroup.CLEARING_EXPERT);
+                ImmutableSet<UserGroup> adminRoles = ImmutableSet.of(UserGroup.ADMIN, UserGroup.SW360_ADMIN);
+
+                request.setAttribute(IS_CLEARING_EXPERT,
+                        isPrimaryRoleOfUserAtLeastClearingExpert
+                                || projectPermission.isUserOfOwnGroupHasRole(clearingExpertRoles, UserGroup.CLEARING_EXPERT)
+                                || projectPermission.isUserOfOwnGroupHasRole(adminRoles, UserGroup.ADMIN));
+                request.setAttribute(WRITE_ACCESS_USER, projectPermission.isActionAllowed(RequestedAction.WRITE));
+
                 List<Project> projects = getWithFilledClearingStateSummary(projectClient, Lists.newArrayList(project), user);
                 Integer approvedReleaseCount = 0;
                 Project projWithCsSummary = projects.get(0);
@@ -448,30 +646,19 @@ public class ModerationPortlet extends FossologyAwarePortlet {
         HttpServletRequest httpServletRequest = PortalUtil.getOriginalServletRequest(PortalUtil.getHttpServletRequest(request));
         String selectedTab = httpServletRequest.getParameter(SELECTED_TAB);
 
-        List<ModerationRequest> openModerationRequests = null;
-        List<ModerationRequest> closedModerationRequests = null;
         List<ClearingRequest> openClearingRequests = null;
         List<ClearingRequest> closedClearingRequests = null;
         ModerationService.Iface client = thriftClients.makeModerationClient();
 
         try {
-            List<ModerationRequest> moderationRequests = client.getRequestsByModerator(user);
-            Map<Boolean, List<ModerationRequest>> partitionedModerationRequests = moderationRequests
-                    .stream()
-                    .collect(Collectors.groupingBy(ModerationPortletUtils::isOpenModerationRequest));
-            openModerationRequests = partitionedModerationRequests.get(true);
-            closedModerationRequests = partitionedModerationRequests.get(false);
-        } catch (TException e) {
-            log.error("Could not fetch moderation requests from backend!", e);
-        }
-
-        request.setAttribute(MODERATION_REQUESTS, CommonUtils.nullToEmptyList(openModerationRequests));
-        request.setAttribute(CLOSED_MODERATION_REQUESTS, CommonUtils.nullToEmptyList(closedModerationRequests));
-        request.setAttribute(IS_USER_AT_LEAST_CLEARING_ADMIN, PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user) ? "Yes" : "No");
-
-        try {
             Set<ClearingRequest> clearingRequestsSet = client.getMyClearingRequests(user);
             clearingRequestsSet.addAll(client.getClearingRequestsByBU(user.getDepartment()));
+
+            if (!CommonUtils.isNullOrEmptyMap(user.getSecondaryDepartmentsAndRoles())) {
+                user.getSecondaryDepartmentsAndRoles().keySet().stream().forEach(department -> wrapTException(() -> {
+                    clearingRequestsSet.addAll(client.getClearingRequestsByBU(department));
+                }));
+            }
 
             Map<Boolean, List<ClearingRequest>> partitionedClearingRequests = clearingRequestsSet
                     .stream().collect(Collectors.groupingBy(ModerationPortletUtils::isClosedClearingRequest));
@@ -490,6 +677,12 @@ public class ModerationPortlet extends FossologyAwarePortlet {
         if (CommonUtils.isNotNullEmptyOrWhitespace(selectedTab)) {
             request.setAttribute(SELECTED_TAB, selectedTab);
         }
+        for (ModerationRequest._Fields moderationFilteredField : MODERATION_FILTERED_FIELDS) {
+            request.setAttribute(moderationFilteredField.getFieldName(),
+                    nullToEmpty(request.getParameter(moderationFilteredField.toString())));
+        }
+        request.setAttribute(PortalConstants.DATE_RANGE, nullToEmpty(request.getParameter(PortalConstants.DATE_RANGE)));
+        request.setAttribute(PortalConstants.END_DATE, nullToEmpty(request.getParameter(PortalConstants.END_DATE)));
         super.doView(request, response);
     }
 
@@ -777,6 +970,60 @@ public class ModerationPortlet extends FossologyAwarePortlet {
         request.setAttribute(PortalConstants.ORGANIZATIONS, organizations);
 
         include("/html/moderation/users/merge.jsp", request, response);
+    }
+
+    @UsedAsLiferayAction
+    public void applyFilters(ActionRequest request, ActionResponse response) throws PortletException, IOException {
+        for (ModerationRequest._Fields moderationFilteredField : MODERATION_FILTERED_FIELDS) {
+            response.setRenderParameter(moderationFilteredField.toString(),
+                    nullToEmpty(request.getParameter(moderationFilteredField.toString())));
+        }
+        response.setRenderParameter(PortalConstants.DATE_RANGE, nullToEmpty(request.getParameter(PortalConstants.DATE_RANGE)));
+        response.setRenderParameter(PortalConstants.END_DATE, nullToEmpty(request.getParameter(PortalConstants.END_DATE)));
+    }
+
+    private Map<String, Set<String>> getModerationFilterMap(PortletRequest request) {
+        Map<String, Set<String>> filterMap = new HashMap<>();
+        for (ModerationRequest._Fields filteredField : MODERATION_FILTERED_FIELDS) {
+            String parameter = request.getParameter(filteredField.toString());
+            if (!isNullOrEmpty(parameter) && !((filteredField.equals(ModerationRequest._Fields.COMPONENT_TYPE)
+                    || filteredField.equals(ModerationRequest._Fields.MODERATION_STATE))
+                    && parameter.equals(PortalConstants.NO_FILTER))) {
+                if (filteredField.equals(ModerationRequest._Fields.TIMESTAMP) && isNotNullEmptyOrWhitespace(request.getParameter(PortalConstants.DATE_RANGE))) {
+                    Date date = new Date();
+                    String upperLimit = new SimpleDateFormat(SampleOptions.DATE_OPTION).format(date);
+                    String dateRange = request.getParameter(PortalConstants.DATE_RANGE);
+                    String query = new StringBuilder("[%s ").append(PortalConstants.TO).append(" %s]").toString();
+                    DateRange range = ThriftEnumUtils.stringToEnum(dateRange, DateRange.class);
+                    switch (range) {
+                    case EQUAL:
+                        break;
+                    case LESS_THAN_OR_EQUAL_TO:
+                        parameter = String.format(query, PortalConstants.EPOCH_DATE, parameter);
+                        break;
+                    case GREATER_THAN_OR_EQUAL_TO:
+                        parameter = String.format(query, parameter, upperLimit);
+                        break;
+                    case BETWEEN:
+                        String endDate = request.getParameter(PortalConstants.END_DATE);
+                        if (isNullEmptyOrWhitespace(endDate)) {
+                            endDate = upperLimit;
+                        }
+                        parameter = String.format(query, parameter, endDate);
+                        break;
+                    }
+                }
+                Set<String> values = CommonUtils.splitToSet(parameter);
+                if (filteredField.equals(ModerationRequest._Fields.DOCUMENT_NAME)
+                        || filteredField.equals(ModerationRequest._Fields.REQUESTING_USER)
+                        || filteredField.equals(ModerationRequest._Fields.REQUESTING_USER_DEPARTMENT)) {
+                    values = values.stream().map(LuceneAwareDatabaseConnector::prepareWildcardQuery)
+                            .collect(Collectors.toSet());
+                }
+                filterMap.put(filteredField.getFieldName(), values);
+            }
+        }
+        return filterMap;
     }
 
     private UnsupportedOperationException unsupportedActionException() {

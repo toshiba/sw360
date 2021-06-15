@@ -9,17 +9,24 @@
  */
 package org.eclipse.sw360.datahandler.db;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.MalformedURLException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -34,6 +41,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -41,12 +49,13 @@ import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.TFieldIdEnum;
+import org.eclipse.sw360.datahandler.cloudantclient.DatabaseConnectorCloudant;
+import org.eclipse.sw360.datahandler.cloudantclient.DatabaseRepositoryCloudantClient;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.common.DatabaseSettings;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.common.WrappedException.WrappedTException;
 import org.eclipse.sw360.datahandler.couchdb.AttachmentConnector;
-import org.eclipse.sw360.datahandler.couchdb.DatabaseConnector;
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.AttachmentMixin;
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.COTSDetailsMixin;
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.ClearingInformationMixin;
@@ -55,8 +64,8 @@ import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.Obligatio
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.ProjectReleaseRelationshipMixin;
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.RepositoryMixin;
 import org.eclipse.sw360.datahandler.couchdb.DatabaseMixInForChangeLog.VendorMixin;
-import org.eclipse.sw360.datahandler.couchdb.DatabaseRepository;
 import org.eclipse.sw360.datahandler.thrift.ProjectReleaseRelationship;
+import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentContent;
@@ -78,6 +87,7 @@ import org.eclipse.sw360.datahandler.thrift.projects.ObligationList;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.vendors.Vendor;
 
+import com.cloudant.client.api.CloudantClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -91,7 +101,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class DatabaseHandlerUtil {
     private static final Logger log = LogManager.getLogger(DatabaseHandlerUtil.class);
     public static final String SEPARATOR = " -> ";
-    private static ChangeLogsRepository changeLogRepository = getChangeLogsRepository();
+    private static ChangeLogsRepository changeLogRepository;
     private static ObjectMapper mapper = initAndGetObjectMapper();
     private static final String ATTACHMENT_ID = "attachmentId_";
     private static final String DOCUMENT_ID = "documentId_";
@@ -100,6 +110,7 @@ public class DatabaseHandlerUtil {
     private static final String ATTACHMENT_STORE_FILE_SYSTEM_LOCATION;
     private static final String ATTACHMENT_STORE_FILE_SYSTEM_PERMISSION;
     private static ExecutorService ATTACHMENT_FILE_SYSTEM_STORE_THREAD_POOL = Executors.newFixedThreadPool(5);
+    private static final String ATTACHMENT_DELETE_NO_OF_DAYS;
     static {
         Properties props = CommonUtils.loadProperties(DatabaseSettings.class, PROPERTIES_FILE_PATH);
         ATTACHMENT_STORE_FILE_SYSTEM_LOCATION = props.getProperty("attachment.store.file.system.location",
@@ -107,6 +118,12 @@ public class DatabaseHandlerUtil {
         ATTACHMENT_STORE_FILE_SYSTEM_PERMISSION = props.getProperty("attachment.store.file.system.permission",
                 "rwx------");
         IS_STORE_ATTACHMENT_TO_FILE_SYSTEM_ENABLED = Boolean.parseBoolean(props.getProperty("enable.attachment.store.to.file.system", "false"));
+        ATTACHMENT_DELETE_NO_OF_DAYS = props.getProperty("attachemnt.delete.no.of.days",
+                "30");
+    }
+
+    public DatabaseHandlerUtil(DatabaseConnectorCloudant db) {
+            changeLogRepository = new ChangeLogsRepository(db);
     }
 
     private static <T, R> Object[] getCyclicLinkPresenceAndLastElementInCycle(T obj, R handler, User user,
@@ -183,7 +200,7 @@ public class DatabaseHandlerUtil {
         return cyclicHierarchy;
     }
 
-    public static <T, R extends DatabaseRepository> boolean isAllIdInSetExists(Set<String> setOfIds, R repository) {
+    public static <T, R extends DatabaseRepositoryCloudantClient<T>> boolean isAllIdInSetExists(Set<String> setOfIds, R repository) {
         long nonExistingIdCount = 0;
         if (setOfIds != null) {
             nonExistingIdCount = setOfIds.stream()
@@ -309,20 +326,6 @@ public class DatabaseHandlerUtil {
         });
     }
 
-    public static ChangeLogsRepository getChangeLogsRepository() {
-        if (changeLogRepository == null) {
-            try {
-                changeLogRepository = new ChangeLogsRepository(new DatabaseConnector(
-                        DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.COUCH_DB_CHANGE_LOGS));
-            } catch (MalformedURLException exp) {
-                log.error("Error occured while creating changeLogRepository.", exp);
-                throw new RuntimeException(exp);
-            }
-        }
-
-        return changeLogRepository;
-    }
-
     /**
      * Register basic informations for the Document.
      */
@@ -413,7 +416,7 @@ public class DatabaseHandlerUtil {
     /**
      * Add Chaneglogs into the DB
      */
-    public static <T extends TBase> void addChangeLogs(T newDocVersion, T oldDocVersion, String userEdited,
+    public <T extends TBase> void addChangeLogs(T newDocVersion, T oldDocVersion, String userEdited,
             Operation operation, AttachmentConnector attachmentConnector, List<ChangeLogs> referenceDocLogList,
             String parentDocId, Operation parentOperation) {
         if (DatabaseSettings.COUCH_DB_DATABASE.contains("test")
@@ -803,5 +806,48 @@ public class DatabaseHandlerUtil {
                             attachmentConnector.readAttachmentStream(attachmentContent), userEmail, documentId,
                             attachmentContentId, att.getFilename());
                 });
+    }
+
+    public static RequestStatus deleteOldAttachmentFromFileSystem() {
+        int noOfDays = Integer.parseInt(ATTACHMENT_DELETE_NO_OF_DAYS);
+        RequestStatus status = null;
+        LocalDate todayDate = LocalDate.now();
+        LocalDate thresholdDateForAttachmentDelete = todayDate.minusDays(noOfDays);
+        Date thresholdDate = Date.from(thresholdDateForAttachmentDelete.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        try {
+            deleteAttachmentAndDirectory(ATTACHMENT_STORE_FILE_SYSTEM_LOCATION, thresholdDate);
+            status = RequestStatus.SUCCESS;
+        } catch (IOException e) {
+            log.error("Unable to delete attachment. ", e);
+            status = RequestStatus.FAILURE;
+        }
+        return status;
+    }
+
+    public static void deleteAttachmentAndDirectory(String directoryFilePath, Date thresholdDate) throws IOException {
+        Path directory = Paths.get(directoryFilePath);
+        if (Files.exists(directory)) {
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
+                    File file = path.toFile();
+                    long fileLastModifiedDate = file.lastModified();
+                    Date modifieddate = new Date(fileLastModifiedDate);
+                    if (thresholdDate.after(modifieddate)) {
+                        Files.delete(path);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult postVisitDirectory(Path directory, IOException ioException) throws IOException {
+                    DirectoryStream<Path> stream = Files.newDirectoryStream(directory);
+                    boolean isFolderEmpty = !stream.iterator().hasNext();
+                    if (isFolderEmpty) {
+                        Files.delete(directory);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
     }
 }

@@ -11,6 +11,7 @@
  */
 package org.eclipse.sw360.datahandler.common;
 
+import com.cloudant.client.api.model.Response;
 import com.google.common.base.*;
 import com.google.common.collect.*;
 
@@ -30,7 +31,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.TFieldIdEnum;
-import org.ektorp.DocumentOperationResult;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -64,6 +64,8 @@ public class CommonUtils {
     private static final Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
 
     public static final Joiner COMMA_JOINER = Joiner.on(", ");
+
+    public static final Joiner NEW_LINE_JOINER = Joiner.on(", <br>");
 
     private static final Comparator<CheckStatus> CHECK_STATUS_COMPARATOR = Comparator.comparingInt(cs -> {
         switch (cs) {
@@ -526,7 +528,7 @@ public class CommonUtils {
     }
 
     @NotNull
-    public static RequestSummary getRequestSummary(List<String> ids, List<DocumentOperationResult> documentOperationResults) {
+    public static RequestSummary getRequestSummary(List<String> ids, List<Response> documentOperationResults) {
         final RequestSummary requestSummary = new RequestSummary();
         requestSummary.requestStatus = documentOperationResults.isEmpty() ? RequestStatus.SUCCESS : RequestStatus.FAILURE;
         requestSummary.setTotalElements(ids.size());
