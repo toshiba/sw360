@@ -58,6 +58,7 @@ struct Obligation {
     22: optional ObligationLevel obligationLevel,
     23: optional ObligationType obligationType,
     300: optional map<string, string> additionalData,
+    97: optional string node,
 
 }
 
@@ -67,6 +68,30 @@ struct LicenseType {
     3: optional string type = "licenseType",
 	5: required i32 licenseTypeId,
     6: required string licenseType;
+}
+
+struct ObligationNode {
+    1: optional string id,
+    2: optional string nodeType,
+    3: optional string nodeText,
+	5: optional string oblElementId,
+    6: optional string type = "obligationNode",
+}
+
+struct ObligationElement {
+    1: optional string id,
+    2: required string langElement,
+    3: required string action,
+	5: required string object,
+    6: optional string status,
+    7: optional string type = "obligationElement",
+}
+
+struct ObligationSuggestion {
+    1: optional string id,
+    2: required string suggestionType,
+    3: required set<string> suggestionData,
+    7: optional string type = "obligationSuggestion",
 }
 
 struct License {
@@ -244,4 +269,39 @@ service LicenseService {
      * delete obligation from database if user has permissions
      **/
     RequestStatus deleteObligations(1: string id, 2: User user);
+
+    /**
+     * Add a new Obligation Element object to database, return id
+     **/
+    string addObligationElements(1:ObligationElement obligationElement, 2: User user);
+
+    /**
+     * get complete list of filled obligation elements
+     **/
+    list<ObligationElement> getObligationElements();
+
+    /**
+     * Add a new Obligation Node object to database, return id
+     **/
+    string addObligationNodes(1:ObligationNode obligationNode, 2: User user);
+    
+    /**
+     * get complete list of filled obligation nodes
+     **/
+    list<ObligationNode> getObligationNodes();
+
+    /**
+     * get ObligationNode by id
+     **/
+    ObligationNode getObligationNodeById( 1: string id);
+
+    /**
+     * get ObligationElement by id
+     **/
+    ObligationElement getObligationElementById( 1: string id);
+
+    /**
+     * Add a new Obligation Suggestion object to database, return id
+     **/
+    //string addObligationSuggstions(1:ObligationSuggestion obligationSuggestion, 2: User user);
 }

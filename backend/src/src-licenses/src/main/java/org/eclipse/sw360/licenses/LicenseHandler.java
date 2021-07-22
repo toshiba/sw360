@@ -118,6 +118,16 @@ public class LicenseHandler implements LicenseService.Iface {
     }
 
     @Override
+    public List<ObligationNode> getObligationNodes() throws TException {
+        return handler.getObligationNodes();
+    }
+
+    @Override
+    public List<ObligationElement> getObligationElements() throws TException {
+        return handler.getObligationElements();
+    }
+
+    @Override
     public List<LicenseType> getLicenseTypesByIds(List<String> ids) throws TException {
         assertNotEmpty(ids);
         return handler.getLicenseTypesByIds(ids);
@@ -175,6 +185,18 @@ public class LicenseHandler implements LicenseService.Iface {
         return handler.getObligationsById(id);
     }
 
+    @Override
+    public ObligationNode getObligationNodeById(String id) throws TException {
+        assertNotEmpty(id);
+        return handler.getObligationNodeById(id);
+    }
+
+    @Override
+    public ObligationElement getObligationElementById(String id) throws TException {
+        assertNotEmpty(id);
+        return handler.getObligationElementById(id);
+    }
+
     ////////////////////
     // BUSINESS LOGIC //
     ////////////////////
@@ -188,6 +210,28 @@ public class LicenseHandler implements LicenseService.Iface {
         assertIdUnset(obligs.getId());
 
         return handler.addObligations(obligs, user);
+    }
+
+    /**
+     * Add a new obligation element object
+     */
+    @Override
+    public String addObligationElements(ObligationElement obligationElement, User user) throws TException {
+        assertNotNull(obligationElement);
+        assertIdUnset(obligationElement.getId());
+
+        return handler.addObligationElements(obligationElement, user);
+    }
+
+    /**
+     * Add a new obligation node object
+     */
+    @Override
+    public String addObligationNodes(ObligationNode obligationNode, User user) throws TException {
+        assertNotNull(obligationNode);
+        assertIdUnset(obligationNode.getId());
+
+        return handler.addObligationNodes(obligationNode, user);
     }
 
     /**

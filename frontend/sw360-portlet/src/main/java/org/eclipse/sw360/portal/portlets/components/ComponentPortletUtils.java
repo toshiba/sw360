@@ -15,6 +15,8 @@ import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.components.*;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
+import org.eclipse.sw360.datahandler.thrift.licenses.ObligationElement;
+import org.eclipse.sw360.datahandler.thrift.licenses.ObligationNode;
 import org.eclipse.sw360.datahandler.thrift.users.RequestedAction;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.vendors.Vendor;
@@ -170,6 +172,18 @@ public abstract class ComponentPortletUtils {
         setFieldValue(request, oblig, Obligation._Fields.OBLIGATION_TYPE);
     }
 
+    public static void updateObligationElementFromRequest(PortletRequest request, ObligationElement obligationElement) {
+        setFieldValue(request, obligationElement, ObligationElement._Fields.LANG_ELEMENT);
+        setFieldValue(request, obligationElement, ObligationElement._Fields.ACTION);
+        setFieldValue(request, obligationElement, ObligationElement._Fields.OBJECT);
+    }
+
+    public static void updateObligationNodeFromRequest(PortletRequest request, ObligationNode obligationNode) {
+        setFieldValue(request, obligationNode, ObligationNode._Fields.NODE_TYPE);
+        setFieldValue(request, obligationNode, ObligationNode._Fields.NODE_TEXT);
+        setFieldValue(request, obligationNode, ObligationNode._Fields.OBL_ELEMENT_ID);
+    }
+
     private static void updateLinkedReleaseFromRequest(PortletRequest request, Map<String, ReleaseRelationship> linkedReleases) {
         linkedReleases.clear();
         String[] ids = request.getParameterValues(Release._Fields.RELEASE_ID_TO_RELATIONSHIP.toString() + ReleaseLink._Fields.ID.toString());
@@ -210,6 +224,14 @@ public abstract class ComponentPortletUtils {
 
     private static void setFieldValue(PortletRequest request, Obligation oblig, Obligation._Fields field) {
         PortletUtils.setFieldValue(request, oblig, field, Obligation.metaDataMap.get(field), "");
+    }
+
+    private static void setFieldValue(PortletRequest request, ObligationElement obligationElement, ObligationElement._Fields field) {
+        PortletUtils.setFieldValue(request, obligationElement, field, ObligationElement.metaDataMap.get(field), "");
+    }
+
+    private static void setFieldValue(PortletRequest request, ObligationNode obligationNode, ObligationNode._Fields field) {
+        PortletUtils.setFieldValue(request, obligationNode, field, ObligationNode.metaDataMap.get(field), "");
     }
 
     public static RequestStatus deleteRelease(PortletRequest request, Logger log) {

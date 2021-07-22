@@ -371,6 +371,12 @@ public class PortalConstants {
     public static final String LICENSE_INFO_EMPTY_FILE = "isEmptyFile";
     public static final String SW360_USER = "sw360User";
 
+    //! Specialized keys for obligation node
+    public static final String OBLIGATION_NODE_LIST = "obligationNodeList";
+
+    //! Specialized keys for obligation element
+        public static final String OBLIGATION_ELEMENT_LIST = "obligationElementList";
+
     //! Serve resource generic keywords
     public static final String ACTION = "action";
     public static final String ACTION_CANCEL = "action_cancel";

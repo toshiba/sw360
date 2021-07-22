@@ -1,0 +1,79 @@
+diff --git a/frontend/sw360-portlet/src/main/java/org/eclipse/sw360/portal/common/CommonVulnerabilityPortletUtils.java b/frontend/sw360-portlet/src/main/java/org/eclipse/sw360/portal/common/CommonVulnerabilityPortletUtils.java
+index b89941c..5f5ca16 100644
+--- a/frontend/sw360-portlet/src/main/java/org/eclipse/sw360/portal/common/CommonVulnerabilityPortletUtils.java
++++ b/frontend/sw360-portlet/src/main/java/org/eclipse/sw360/portal/common/CommonVulnerabilityPortletUtils.java
+@@ -47,7 +47,7 @@ public class CommonVulnerabilityPortletUtils {
+                         "<span class=\"" + htmlClassPrefix + "Head\"><b>" + valueGetter.apply(historyElement) +
+                         "</b> <span class=\"" + htmlClassPrefix + "Date\">(" + dateGetter.apply(historyElement) +
+                         ")</span></span><br/><span class=\"" + htmlClassPrefix + "CheckedBy\"><b>" + authorGetter.apply(historyElement) +
+-                        "</b></span><br/><span class=\"" + htmlClassPrefix + "Comment\">" + commentGetter.apply(historyElement) +
++                        "</b></span><br/><span class=\"" + htmlClassPrefix + "Comment\">" + commentGetter.apply(historyElement).replace("<", "&lt").replace(">", "&gt") +
+                         "</span></li>"));
+         sb.append("</ol>");
+         return sb.toString();
+diff --git a/frontend/sw360-portlet/src/main/resources/META-INF/resources/css/components/_tooltips.scss b/frontend/sw360-portlet/src/main/resources/META-INF/resources/css/components/_tooltips.scss
+index f684582..60eb6c3 100644
+--- a/frontend/sw360-portlet/src/main/resources/META-INF/resources/css/components/_tooltips.scss
++++ b/frontend/sw360-portlet/src/main/resources/META-INF/resources/css/components/_tooltips.scss
+@@ -14,10 +14,10 @@
+ 
+ .info-text {
+     ol.formatedMessageForVul {
+-        list-style: none;
++        list-style-type: decimal;
++        max-width: fit-content;
+ 
+         li:before {
+-            content: "- ";
+             margin-left: -0.6rem;
+         }
+ 
+@@ -48,6 +48,11 @@
+     }
+ }
+ 
++.info-text.ui-widget.ui-widget-content {
++    max-height: 300px;
++    overflow-y: auto;
++}
++
+ .sw360-tt:hover:after {
+     background-color: #333;
+     color: #fff;
+diff --git a/frontend/sw360-portlet/src/main/resources/META-INF/resources/js/bridges/datatables.js b/frontend/sw360-portlet/src/main/resources/META-INF/resources/js/bridges/datatables.js
+index a58aa7a..8733259 100644
+--- a/frontend/sw360-portlet/src/main/resources/META-INF/resources/js/bridges/datatables.js
++++ b/frontend/sw360-portlet/src/main/resources/META-INF/resources/js/bridges/datatables.js
+@@ -115,7 +115,31 @@ define('bridges/datatables', [
+ 					"<'row'<'col-auto'i><'col'p>>"; // line below table
+ 			}
+ 
+-			return $(selector).DataTable(config);
++			config.drawCallback = function () {
++				$('.info-text').tooltip({
++					track: true,
++					classes: {
++						"ui-tooltip": "ui-corner-all ui-widget-shadow info-text"
++					},
++					content: function () {
++						return $('<textarea/>').html($(this).prop('title')).val();
++					},
++					'data-html': 'true',
++					close: function (event, ui) {
++						ui.tooltip.hover(function () {
++							$(this).stop(true).fadeTo(100, 1);
++						},
++						function () {
++							$(this).fadeOut('100', function () {
++								$(this).remove();
++							});
++						});
++					}
++				});
++			}
++
++			let table = $(selector).DataTable(config);
++			return table;
+ 		},
+ 		destroy: function(selector) {
+ 			$(selector).DataTable({

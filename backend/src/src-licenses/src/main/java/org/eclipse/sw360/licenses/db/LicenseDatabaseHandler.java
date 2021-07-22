@@ -65,6 +65,9 @@ public class LicenseDatabaseHandler {
      */
     private final LicenseRepository licenseRepository;
     private final TodoRepository obligRepository;
+    private final ObligationElementRepository obligationElementRepository;
+    private final ObligationNodeRepository obligationNodeRepository;
+    private final ObligationSuggestionRepository obligationSuggestionRepository;
     private final LicenseTypeRepository licenseTypeRepository;
     private final LicenseModerator moderator;
     private final CustomPropertiesRepository customPropertiesRepository;
@@ -79,6 +82,10 @@ public class LicenseDatabaseHandler {
         // Create the repository
         licenseRepository = new LicenseRepository(db);
         obligRepository = new TodoRepository(db);
+        obligationElementRepository = new ObligationElementRepository(db);
+        obligationNodeRepository = new ObligationNodeRepository(db);
+        obligationSuggestionRepository = new ObligationSuggestionRepository(db);
+
         licenseTypeRepository = new LicenseTypeRepository(db);
         customPropertiesRepository = new CustomPropertiesRepository(db);
 
@@ -86,7 +93,10 @@ public class LicenseDatabaseHandler {
                 licenseRepository,
                 licenseTypeRepository,
                 obligRepository,
-                customPropertiesRepository
+                customPropertiesRepository,
+                obligationElementRepository,
+                obligationNodeRepository,
+                obligationSuggestionRepository
         };
 
         moderator = new LicenseModerator();
@@ -205,6 +215,115 @@ public class LicenseDatabaseHandler {
 
         return obligs.getId();
     }
+
+    /**
+     * Adds a new obligation element to the database.
+     *
+     * @return ID of the added obligations element.
+     */
+    public String addObligationElements(@NotNull ObligationElement obligationElement, User user) throws SW360Exception {
+        if (!PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user)){
+            return null;
+        }
+        prepareObligationElement(obligationElement);
+        // check existed obligation element
+        String obligationElementId = "";
+        Set<String> ids = obligationElementRepository.getAllIds();
+        if (!ids.isEmpty()){
+            for (String id : ids) {
+                ObligationElement obligationElementExisted = obligationElementRepository.get(id);
+                String obligationElementOld = obligationElementExisted.getLangElement() + obligationElementExisted.getAction() + obligationElementExisted.getObject();
+                String obligationElementNew = obligationElement.getLangElement() + obligationElement.getAction() + obligationElement.getObject();
+                if (obligationElementNew.equals(obligationElementOld)) {
+                    obligationElementId = id;
+                    break;
+                }
+            }
+            if (obligationElementId.equals("")) {
+                obligationElementRepository.add(obligationElement);
+                obligationElementId = obligationElement.getId();
+            }
+        } else {
+            obligationElementRepository.add(obligationElement);
+            obligationElementId = obligationElement.getId();
+        }
+        return obligationElementId;
+    }
+
+
+    /**
+     * Adds a new obligation node to the database.
+     *
+     * @return ID of the added obligations node.
+     */
+    public String addObligationNodes(@NotNull ObligationNode obligationNode, User user) throws SW360Exception {
+        if (!PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user)){
+            return null;
+        }
+        prepareObligationNode(obligationNode);
+        // check existed node
+        Set<String> ids = obligationNodeRepository.getAllIds();
+        if (!ids.isEmpty()){
+            for (String id : ids) {
+                ObligationNode obligationNodeExisted = obligationNodeRepository.get(id);
+                if (obligationNodeExisted.getNodeType().equals("Obligation") &&
+                    obligationNodeExisted.getOblElementId().equals(obligationNode.getOblElementId())) {
+                    return id;
+                }
+                if (!obligationNodeExisted.getNodeType().equals("Obligation") &&
+                    obligationNodeExisted.getNodeType().equals(obligationNode.getNodeType()) &&  obligationNodeExisted.getNodeText().equals(obligationNode.getNodeText())) {
+                    return id;
+                }
+            }
+                obligationNodeRepository.add(obligationNode);
+                //addObligationSuggestions(obligationNode);
+                return obligationNode.getId();
+        } else {
+            obligationNodeRepository.add(obligationNode);
+            //addObligationSuggestions(obligationNode);
+            return obligationNode.getId();
+        }
+    }
+
+    /**
+     * Adds a new obligation suggestion to the database.
+     *
+     * @return ID of the added obligations suggestion.
+     */
+    public void addObligationSuggestions(@NotNull ObligationNode obligationNode) throws SW360Exception {
+        System.out.println("=======> Add Suggestion");
+        Set<String> types = new HashSet<>(Arrays.asList("NodeType", "LanguageElement", "Action", "Object"));
+        Set<ObligationSuggestion> obligationsSuggestionExisted = new HashSet<>(obligationSuggestionRepository.getAll());
+        if (!obligationsSuggestionExisted.isEmpty()) {
+            System.out.println("=======>Not Empty" +obligationsSuggestionExisted);
+            Set<String> typesExisted = new HashSet<String>();;
+            for (ObligationSuggestion obligationSuggestionExisted : obligationsSuggestionExisted) {
+                typesExisted.add(obligationSuggestionExisted.getSuggestionType());
+            }
+            System.out.println("=======>Existed type: " + typesExisted);
+            types.removeAll(typesExisted);
+            System.out.println("=======>Add type: " + types);
+            Set<String> typesAdd = types;
+            if (!typesAdd.isEmpty()) {
+                System.out.println("=======>Add: " + typesAdd);
+                for (String type : typesAdd) {
+                    ObligationSuggestion obligationSuggestionInit = new ObligationSuggestion();
+                    obligationSuggestionInit.setSuggestionType(type);
+                    obligationSuggestionInit.setSuggestionData(null);
+                    obligationSuggestionRepository.add(obligationSuggestionInit);
+                }
+            }
+        } else {
+            for (String type : types) {
+                ObligationSuggestion obligationSuggestionInit = new ObligationSuggestion();
+                obligationSuggestionInit.setSuggestionType(type);
+                obligationSuggestionInit.setSuggestionData(null);
+                obligationSuggestionRepository.add(obligationSuggestionInit);
+            }
+        }
+        
+    }
+
 
     /**
      * Add oblig id to a given license
@@ -565,6 +684,17 @@ public class LicenseDatabaseHandler {
         return obligations;
     }
 
+    public List<ObligationNode> getObligationNodes() {
+        final List<ObligationNode> obligationNodes = obligationNodeRepository.getAll();
+        return obligationNodes;
+    }
+
+
+    public List<ObligationElement> getObligationElements() {
+        final List<ObligationElement> obligationElements = obligationElementRepository.getAll();
+        return obligationElements;
+    }
+
     public List<LicenseType> getLicenseTypesByIds(Collection<String> ids) {
         return licenseTypeRepository.get(ids);
     }
@@ -589,6 +719,27 @@ public class LicenseDatabaseHandler {
 
     public Obligation getObligationsById(String id) {
         return obligRepository.get(id);
+    }
+
+    public ObligationNode getObligationNodeById(String id) {
+        return obligationNodeRepository.get(id);
+    }
+
+    public ObligationElement getObligationElementById(String id) {
+        return obligationElementRepository.get(id);
+    }
+
+    private List<ObligationNode> isExistedObligationNode(ObligationNode obligationNode) {
+        String type = obligationNode.getNodeType();
+        String text = obligationNode.getNodeText();
+        List<ObligationNode> duplicatesType = obligationNodeRepository.searchByObligationNodeType(type);
+        List<ObligationNode> duplicatesText = obligationNodeRepository.searchByObligationNodeText(text);
+        duplicatesText.retainAll(duplicatesType);
+        if (duplicatesText.isEmpty()) {
+            return duplicatesText;
+        }
+
+        return Collections.emptyList();
     }
 
     public RequestStatus deleteLicense(String id, User user) throws SW360Exception {

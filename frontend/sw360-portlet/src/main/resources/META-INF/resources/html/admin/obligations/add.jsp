@@ -22,9 +22,9 @@
 <%@ page import="org.eclipse.sw360.datahandler.thrift.licenses.Obligation" %>
 <%@ page import="org.eclipse.sw360.datahandler.thrift.licenses.ObligationLevel" %>
 <%@ page import="org.eclipse.sw360.datahandler.thrift.licenses.ObligationType" %>
+<%@ page import="org.eclipse.sw360.datahandler.thrift.licenses.ObligationNode" %>
 
 <jsp:useBean id="todo" class="org.eclipse.sw360.datahandler.thrift.licenses.Obligation" scope="request" />
-
 <portlet:actionURL var="addURL" name="addObligations">
 </portlet:actionURL>
 
@@ -65,7 +65,7 @@
                                         </div>
                                     </td>
                                     <td colspan="2">
-                                        <div class="form-group">
+                                        <div class="form-group" style="display: none;">
                                             <label for="obligsText"><liferay-ui:message key="text" /></label>
                                             <input id="obligsText" type="text" required class="form-control" placeholder="<liferay-ui:message key="enter.text" />" name="<portlet:namespace/><%=Obligation._Fields.TEXT%>"/>
                                             <div class="invalid-feedback">
@@ -97,6 +97,14 @@
                                      </div>
                                     </td>
                                 </tr>
+                                <tr>
+                                    <td colspan="3">
+                                        <div class="form-group">
+                                            <label for="obligsText"><liferay-ui:message key="text" /></label>
+                                            <%@ include file="obligationTextTree.jsp" %>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </form>
@@ -121,7 +129,41 @@
         });
 
         $('.portlet-toolbar button[data-action="save"]').on('click', function() {
+            const tree = readNode('#root');
+            console.log(tree);
+            console.log(JSON.stringify(tree));
+            const jsonTextTree = JSON.stringify(tree);
+            document.getElementById("obligsText").value = jsonTextTree;
             $('#todoAddForm').submit();
         });
+
+        function readNode(currentNode) {
+            var nodeData = {val:[], children:[]};
+
+            nodeData.val = getNodeValues(currentNode);
+
+            const childNodes = $(currentNode).children('ul');
+
+            $(childNodes).each(function(key, childNode) {
+                var tmp = $(childNode).children('.tree-node').first();
+                nodeData.children.push(readNode(tmp));
+            });
+
+            return nodeData;
+        }
+
+        function getNodeValues(node) {
+            const children = $(node).children();
+
+            var nodeValues = [];
+
+            $.each(children, function(key, child) {
+                if ($(child).is('input') && $(child).css('display') != 'none') {
+                    nodeValues.push($(child).val());
+                }
+            });
+
+            return nodeValues;
+        }
     });
 </script>
