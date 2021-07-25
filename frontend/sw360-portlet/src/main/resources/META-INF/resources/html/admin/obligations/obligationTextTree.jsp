@@ -12,9 +12,9 @@
             <div class="main-ctn">
                 <div id="tree">
                     <h2>Input</h2>
-                    <ul>
+                    <ul id="obligationText">
                         <li class="tree-node" id="root">
-                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="Enter obigation name...">
+                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="Same with Obigation Title  ">
                             <span class="controls">
                                 &raquo;
                                 <a class="btn-link" href="#" data-func="add-child"
@@ -48,27 +48,27 @@
                 </datalist>
 
                 <%-- Obligation element --%>
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.LANG_ELEMENT%>" list="obLangElement" element-type="Obligation" placeholder="Language Element">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.LANG_ELEMENT%>" class="obLangElement" list="obLangElement" element-type="Obligation" placeholder="Language Element">
                 <datalist id="obLangElement">
                     <option value="YOU MUST">  
                     <option value="YOU MUST NOT">
                 </datalist>
 
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.ACTION%>" list="obAction" element-type="Obligation" placeholder="Action">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.ACTION%>" class="obAction" list="obAction" element-type="Obligation" placeholder="Action">
                 <datalist id="obAction">
                     <option value="Provide">  
                     <option value="Modify">
                     <option value="Display">
                 </datalist>
 
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.OBJECT%>" list="obObject" element-type="Obligation" placeholder="Object">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.OBJECT%>" class="obObject" list="obObject" element-type="Obligation" placeholder="Object">
                 <datalist id="obObject">
                     <option value="Copyright notices">  
                     <option value="License text">
                     <option value="License notices">
                 </datalist>
                 <%-- Other Type --%>
-                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" element-type="Other" placeholder="Text">
+                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" element-type="Other" placeholder="Text">
 
                 <%-- Action with element --%>
                 <span class="controls">
@@ -97,6 +97,12 @@
 
 <script>
 $(document).ready(function () {
+    $("#root .elementType").first().prop('disabled', true);
+    const selectElement = document.querySelector('#todoTitle');
+    selectElement.addEventListener('change', (event) => {
+        $("#root .elementType").first().val(document.getElementById('todoTitle').value)
+        rebuild_tree()
+    });
     addTypeSugguestions()
     addObligationSugguestions()
     // get sugguestions
@@ -221,16 +227,29 @@ $(document).ready(function () {
 
         items.each(function (index) {
             const $this = $(this);
-            out +=
-                padding +
-                (index == last ? prefix_last : prefix) +
-                $this.children("input").val() +
-                "\n";
+            if ($this.attr('id') != "root") {
+                if ($this.children(".elementType").val() == "Obligation") {
+                    out +=
+                    padding +
+                    ($this.children(".obLangElement").val() == null ? "" : $this.children(".obLangElement").val()) + " " +
+                    ($this.children(".obAction").val() == null ? "" : $this.children(".obAction").val()) + " " +
+                    ($this.children(".obObject").val() == null ? "" : $this.children(".obObject").val()) + " " +
+                    "\n";
+                } else {
+                    out +=
+                    padding +
+                    $this.children(".elementType").val() + " " +
+                    ($this.children(".other").val() == null ? "" : $this.children(".other").val()) + " " +
+                    "\n";
+                }
+            }    
+
             const subdirs = $this.children("ul");
             if (subdirs.length) {
                 out += get_subdir_text(
                     subdirs,
-                    padding + (index == last ? spacer_e : spacer)
+                    padding + 
+                    spacer_e
                 );
             }
         });
@@ -238,12 +257,12 @@ $(document).ready(function () {
     }
 
     function rebuild_tree() {
-        $("#out").text($("#p_name").val() + "\n" + get_subdir_text($("#tree")));
+        $("#out").text(get_subdir_text($("#obligationText")));
     }
 
     // $("#tree").append(li_template.clone());
     $(document).on("keyup", "#tree input", rebuild_tree);
-    $("#p_name").on("keyup", rebuild_tree);
+    //$("#p_name").on("keyup", rebuild_tree);
 
     $(document)
         .on("mouseover", "li, #tree", function (e) {
