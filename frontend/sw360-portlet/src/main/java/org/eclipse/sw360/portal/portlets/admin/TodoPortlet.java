@@ -35,6 +35,7 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONArray;
+import static com.google.common.base.Strings.isNullOrEmpty;
 
 import static org.eclipse.sw360.portal.common.PortalConstants.*;
 
@@ -62,21 +63,48 @@ public class TodoPortlet extends Sw360Portlet {
     String obligationText = "";
     //! Serve resource and helpers
     @Override
-    public void serveResource(ResourceRequest request, ResourceResponse response) {
 
+    public void serveResource(ResourceRequest request, ResourceResponse response) throws IOException, PortletException {
+        String action = request.getParameter(ACTION);
+        String what = request.getParameter(WHAT);
+        String where = request.getParameter(WHERE);
         final String id = request.getParameter("id");
         final User user = UserCacheHolder.getUserFromRequest(request);
 
         LicenseService.Iface licenseClient = thriftClients.makeLicenseClient();
 
+        if (REMOVE_TODO.equals(action)) {
+            try {
+                RequestStatus status = licenseClient.deleteObligations(id, user);
+                renderRequestStatus(request,response, status);
+            } catch (TException e) {
+                log.error("Error deleting oblig", e);
+                renderRequestStatus(request,response, RequestStatus.FAILURE);
+            }
+        } else if (VIEW_IMPORT_OBLIGATION_ELEMENTS.equals(action)) {
+            serveObligationElementSearchResults(request, response, where);
+        }
+    }
+
+    private void serveObligationElementSearchResults(ResourceRequest request, ResourceResponse response, String searchText) throws IOException, PortletException {
+        final User user = UserCacheHolder.getUserFromRequest(request);
+        List<ObligationElement> searchResult;
 
         try {
-            RequestStatus status = licenseClient.deleteObligations(id, user);
-            renderRequestStatus(request,response, status);
+            LicenseService.Iface client = thriftClients.makeLicenseClient();
+            if (isNullOrEmpty(searchText)) {
+                searchResult = client.getObligationElements();
+            } else {
+                // need to update for search if input (where)
+                searchResult = null;
+                //client.search(searchText);
+            }
         } catch (TException e) {
-            log.error("Error deleting oblig", e);
-            renderRequestStatus(request,response, RequestStatus.FAILURE);
+            log.error("Error searching Obligation Element", e);
+            searchResult = Collections.emptyList();
         }
+        request.setAttribute(OBLIGATION_ELEMENT_SEARCH, searchResult);
+        include("/html/admin/obligations/ajax/searchObligationElementsAjax.jsp", request, response, PortletRequest.RESOURCE_PHASE);
     }
 
 

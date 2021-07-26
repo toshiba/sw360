@@ -254,6 +254,9 @@ public class PortalConstants {
     public static final String PROJECT_SEARCH = "projectSearch";
     public static final String RELEASE_SEARCH = "releaseSearch";
     public static final String RELEASE_SEARCH_BY_VENDOR = "releaseSearchByVendor";
+    public static final String OBLIGATION_ELEMENT_SEARCH = "obligationElementSearch";
+    public static final String OBLIGATION_ELEMENT_ID = "obligationElementId";
+
     public static final String RELEASE_LIST_FROM_LINKED_PROJECTS = "releaseListFromLinkedProjects";
     public static final String STATE;
     public static final String PROJECT_TYPE;
@@ -478,6 +481,8 @@ public class PortalConstants {
 
     // project actions
     public static final String VIEW_LINKED_PROJECTS = "view_linked_projects";
+    public static final String VIEW_IMPORT_OBLIGATION_ELEMENTS = "view_import_obligation_elements";
+
     public static final String REMOVE_PROJECT = "remove_projects";
     public static final String LIST_NEW_LINKED_PROJECTS = "add_to_linked_projects";
     public static final String VIEW_LINKED_RELEASES = "view_linked_releases";
