@@ -67,9 +67,11 @@
                     <option value="License text">
                     <option value="License notices">
                 </datalist>
-                <%-- Other Type --%>
-                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" element-type="Other" placeholder="Text">
 
+                <%-- Other Type --%>
+                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" list="otherText" element-type="Other" placeholder="Text">
+                <datalist id="otherText">
+                </datalist>
                 <%-- Action with element --%>
                 <span class="controls">
                     &raquo;
@@ -105,19 +107,27 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* 
             $("#root .elementType").first().val(document.getElementById('todoTitle').value)
             rebuild_tree()
         });
-        addTypeSugguestions()
+        addTypeAndOtherTextSugguestions()
         addObligationSugguestions()
         // get sugguestions
-        function addTypeSugguestions(){
+        function addTypeAndOtherTextSugguestions(){
             var typeSugguestion = new Set()
+            var otherTextSugguestion = new Set()
             <core_rt:forEach items="${obligationNodeList}" var="obligNode">
                 typeSugguestion.add("<sw360:out value='${obligNode.nodeType}'/>")
+                <core_rt:if test='${obligNode.nodeType != "ROOT"}'>
+                    otherTextSugguestion.add("<sw360:out value='${obligNode.nodeText}'/>")
+                </core_rt:if>
             </core_rt:forEach>
             typeSugguestion.delete("ROOT")
             typeSugguestion.delete("Obligation")
             for (var type of typeSugguestion) {
                     document.getElementById("typeList").innerHTML +=
                     "<option value=\""+type+"\">"
+            }
+            for (var text of otherTextSugguestion) {
+                    document.getElementById("otherText").innerHTML +=
+                    "<option value=\""+text+"\">"
             }
         }
 

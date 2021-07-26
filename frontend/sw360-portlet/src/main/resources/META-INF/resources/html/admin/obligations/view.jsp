@@ -94,7 +94,7 @@
                     DT_RowId: "${oblig.id}",
                     id: "${oblig.id}",
                     title: "<sw360:out value='${oblig.title}'/>",
-                    text: obligText,
+                    text: '<p style="overflow: auto; max-height: 10rem;">'+obligText+'</p>',
                     obligationLevel: "<sw360:DisplayEnum value="${oblig.obligationLevel}"/>"
                 });
             </core_rt:forEach>
