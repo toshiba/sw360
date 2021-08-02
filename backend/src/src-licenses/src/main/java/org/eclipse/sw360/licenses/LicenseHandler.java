@@ -303,10 +303,28 @@ public class LicenseHandler implements LicenseService.Iface {
     }
 
     @Override
+    public RequestSummary importAllOSADLLicenses(User user) throws TException {
+        if(! PermissionUtils.isUserAtLeast(UserGroup.CLEARING_ADMIN, user)){
+            return new RequestSummary().setRequestStatus(RequestStatus.FAILURE);
+        }
+        return handler.importAllOSADLLicenses(user);
+    }
+
+    @Override
     public RequestStatus deleteObligations(String id, User user) throws TException {
         assertId(id);
         assertUser(user);
         return handler.deleteObligations(id, user);
+    }
+
+    @Override
+    public String addNodes(String jsonString, User user) throws TException {
+        return handler.addNodes(jsonString, user);
+    }
+
+    @Override
+    public String buildObligationText(String nodes, String level) throws TException {
+        return handler.buildObligationText(nodes, Integer.parseInt(level));
     }
 
 }

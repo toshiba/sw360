@@ -319,6 +319,7 @@ public class PortalConstants {
     public static final String DUPLICATE_PROJECTS = "duplicateProjects";
     public static final String ACTION_DELETE_ALL_LICENSE_INFORMATION = "deleteAllLicenseInformation";
     public static final String ACTION_IMPORT_SPDX_LICENSE_INFORMATION = "importSpdxLicenseInformation";
+    public static final String ACTION_IMPORT_OSADL_LICENSE_INFORMATION = "importOSADLLicenseInformation";
 
 
     //! Specialized keys for vulnerability management

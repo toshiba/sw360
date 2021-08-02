@@ -265,6 +265,8 @@ service LicenseService {
     RequestSummary deleteAllLicenseInformation(1: User user);
 
     RequestSummary importAllSpdxLicenses(1: User user);
+
+    RequestSummary importAllOSADLLicenses(1: User user);
     /**
      * delete obligation from database if user has permissions
      **/
@@ -301,7 +303,12 @@ service LicenseService {
     ObligationElement getObligationElementById( 1: string id);
 
     /**
-     * Add a new Obligation Suggestion object to database, return id
+     * add ObligationNode from jsonString input
      **/
-    //string addObligationSuggstions(1:ObligationSuggestion obligationSuggestion, 2: User user);
+    string addNodes(1:string jsonString, 2: User user)
+
+    /**
+     * build obligation text after addNodes
+     **/
+    string buildObligationText(1: string nodes, 2: string level)
 }
