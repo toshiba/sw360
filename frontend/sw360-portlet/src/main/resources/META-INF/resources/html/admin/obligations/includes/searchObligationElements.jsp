@@ -149,11 +149,15 @@
 
             $dialog = dialog.open('#searchObligationElementsDialog', {
             }, function(submit, callback) {
-                var obligationElementIds = [];
-
-                $('#obligationElementSearchResultstable').find(':checked').each(function () {
-                    obligationElementIds.push(this.value);
-                });
+                var obligationElement = [];
+                if($("input[type='radio'].form-check-input").is(':checked')) {
+                    var selected_value =  $("input[type='radio'].form-check-input:checked").val();
+                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("lang"));
+                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("action"));
+                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("object"));
+                }
+                // return obligation will be imported
+                console.log(obligationElement)
                 callback(true);
             }, function() {
                 this.$.find('.spinner').hide();

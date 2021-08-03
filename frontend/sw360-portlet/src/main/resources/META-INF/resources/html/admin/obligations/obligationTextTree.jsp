@@ -14,7 +14,7 @@
                     <h2>Input</h2>
                     <ul id="obligationText">
                         <li class="tree-node" id="root">
-                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="Same with Obigation Title  ">
+                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="Title">
                             <span class="controls">
                                 &raquo;
                                 <a class="btn-link" href="#" data-func="add-child"
@@ -23,7 +23,6 @@
                             </span>
                         </li>
                     </ul>
-                    <ul id="tree" class="tree"></ul>
                 </div>
 
                 <hr />
@@ -39,58 +38,39 @@
         </div>
     </main>
 
-    <div class="hidden" id="template">
+    <div style="display: none;" class="hidden" id="template">
         <ul>
             <li class="tree-node">
                 <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TYPE%>" class="elementType" list="typeList" placeholder="Type">
-                <datalist id="typeList">
-                    <option value="Obligation">  
+                <datalist id="typeList" class="typeListData">
+                    <option value="Obligation">
                 </datalist>
 
                 <%-- Obligation element --%>
                 <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.LANG_ELEMENT%>" class="obLangElement" list="obLangElement" element-type="Obligation" placeholder="Language Element">
-                <datalist id="obLangElement">
-                    <option value="YOU MUST">  
-                    <option value="YOU MUST NOT">
+                <datalist id="obLangElement" class="obLangElementData">
                 </datalist>
 
                 <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.ACTION%>" class="obAction" list="obAction" element-type="Obligation" placeholder="Action">
-                <datalist id="obAction">
-                    <option value="Provide">  
-                    <option value="Modify">
-                    <option value="Display">
+                <datalist id="obAction" class="obActionData">
                 </datalist>
 
                 <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.OBJECT%>" class="obObject" list="obObject" element-type="Obligation" placeholder="Object">
-                <datalist id="obObject">
-                    <option value="Copyright notices">  
-                    <option value="License text">
-                    <option value="License notices">
+                <datalist id="obObject" class="obObjectData">
                 </datalist>
 
                 <%-- Other Type --%>
                 <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" list="otherText" element-type="Other" placeholder="Text">
-                <datalist id="otherText">
+                <datalist id="otherText" class="otherTextData">
                 </datalist>
+
                 <%-- Action with element --%>
                 <span class="controls">
                     &raquo;
-                    <a class="btn-link" href="#"Attribute data-func="add-sibling"
-                        >+sibling</a
-                    >
-                    |
-                    <a class="btn-link" href="#" data-func="add-child"
-                        >+child</a
-                    >
-                    |
-                    <a class="btn-link" href="#" data-func="delete"
-                        >delete</a
-                    >
-                    |
-                    <a class="btn-link" href="#" data-func="import" id="importObligationElementtButton"
-                        >import</a
-                    >
-
+                    <a class="btn-link" href="#"Attribute data-func="add-sibling">+sibling</a> |
+                    <a class="btn-link" href="#" data-func="add-child">+child</a> |
+                    <a class="btn-link" href="#" data-func="delete">delete</a> |
+                    <a class="btn-link" href="#" data-func="import" id="importObligationElementtButton">import</a>
                 </span>
             </li>
         </ul>
@@ -99,74 +79,134 @@
 <%@ include file="/html/admin/obligations/includes/searchObligationElements.jsp" %>
 <%@ include file="/html/utils/includes/requirejs.jspf" %>
 <script>
-require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* jquery-plugins,  'jquery-ui',*/ 'utils/link', 'utils/includes/clipboard'], function($, dialog, datatables, keyboard, link, clipboard) {
+require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'utils/cssloader', /* jquery-plugins,  'jquery-ui', 'utils/link', 'utils/includes/clipboard' */], function($, dialog, datatables, keyboard, cssloader,/* link, clipboard */) {
     $(document).ready(function () {
-        $("#root .elementType").first().prop('disabled', true);
-        const selectElement = document.querySelector('#todoTitle');
-        selectElement.addEventListener('change', (event) => {
-            $("#root .elementType").first().val(document.getElementById('todoTitle').value)
-            rebuild_tree()
+        const indent = "    ",                  // Use 4 spaces for indentation of previewing
+            ul_template = $("#template > ul");
+
+        const action = {
+            "add-sibling": function (obj) {
+                var newNode = ul_template.clone();
+                var newId = Date.now();
+                newNode.find('#otherText').attr('id', newId);
+                newNode.find("[list='otherText']").attr('list', newId);
+                obj.parent().after(newNode);
+                $('.elementType').on('change keyup', changeElementType);
+                showElementControls(newNode.find(".elementType"));
+            },
+            "add-child": function (obj) {
+                var newNode = ul_template.clone();
+                var newId = Date.now();
+                newNode.find('#otherText').attr('id', newId);
+                newNode.find("[list='otherText']").attr('list', newId);
+                obj.append(newNode);
+                $('.elementType').on('change keyup', changeElementType);
+                showElementControls(newNode.find(".elementType"));
+            },
+            delete: function (obj) {
+                obj.parent().remove();
+            },
+            "import": function (obj) {
+                $dialog = dialog.open('#searchObligationElementsDialog');
+            },
+        };
+
+        $(document).on("click", "li.tree-node .controls > a", function () {
+            action[this.getAttribute("data-func")]($(this).closest("li"));
+            updatePreview();
+            return false;
         });
-        addTypeAndOtherTextSugguestions()
-        addObligationSugguestions()
-        // get sugguestions
-        function addTypeAndOtherTextSugguestions(){
-            var typeSugguestion = new Set()
-            var otherTextSugguestion = new Set()
-            <core_rt:forEach items="${obligationNodeList}" var="obligNode">
-                typeSugguestion.add("<sw360:out value='${obligNode.nodeType}'/>")
-                <core_rt:if test='${obligNode.nodeType != "ROOT"}'>
-                    otherTextSugguestion.add("<sw360:out value='${obligNode.nodeText}'/>")
-                </core_rt:if>
-            </core_rt:forEach>
-            typeSugguestion.delete("ROOT")
-            typeSugguestion.delete("Obligation")
-            for (var type of typeSugguestion) {
-                    document.getElementById("typeList").innerHTML +=
-                    "<option value=\""+type+"\">"
+
+        //Disable the first textbox because the title will be set automatically
+        $("#root .elementType").first().prop('disabled', true);
+
+        $('#todoTitle').on('change keyup', (event) => {
+            $("#root .elementType").first().val(document.getElementById('todoTitle').value)
+            updatePreview()
+        });
+
+        const typeSuggestions = getTypeSuggestions();
+
+        const obligationSuggestions = getObligationSuggestions();
+
+        function getJSONObjectKeys(object) {
+            var keys = [];
+
+            for(var key in object) {
+                keys.push(key);
             }
-            for (var text of otherTextSugguestion) {
-                    document.getElementById("otherText").innerHTML +=
-                    "<option value=\""+text+"\">"
-            }
+
+            return keys;
         }
 
-        function addObligationSugguestions(){
-            var languageElements = new Set()
-            var actions = new Set()
-            var objects = new Set()
-            <core_rt:forEach items="${obligationElementList}" var="obligationElement">
-                languageElements.add("<sw360:out value='${obligationElement.langElement}'/>")
-                actions.add("<sw360:out value='${obligationElement.action}'/>")
-                objects.add("<sw360:out value='${obligationElement.object}'/>")
+        function getTypeSuggestions() {
+            var suggestions = {};
+            <core_rt:forEach items="${obligationNodeList}" var="node">
+                var nodeType = "<sw360:out value='${node.nodeType}'/>";
+                if (nodeType != "" && nodeType != "ROOT" && !suggestions.hasOwnProperty(nodeType)) {
+                    suggestions[nodeType] = new Set();
+                }
             </core_rt:forEach>
-            languageElements.delete("YOU MUST")
-            languageElements.delete("YOU MUST NOT")
-            for (var languageElement of languageElements) {
-                document.getElementById("obLangElement").innerHTML +=
-                "<option value=\""+languageElement+"\">"
+
+            <core_rt:forEach items="${obligationNodeList}" var="node">
+                var nodeType = "<sw360:out value='${node.nodeType}'/>";
+
+                if (suggestions.hasOwnProperty(nodeType)) {
+                    suggestions[nodeType].add("<sw360:out value='${node.nodeText}'/>");
+                }
+            </core_rt:forEach>
+
+            if (Object.keys(suggestions).length === 0) {
+                suggestions['Obligation'] = new Set()
             }
-            actions.delete("Provide")
-            actions.delete("Modify")
-            actions.delete("Display")
-            for (var action of actions) {
-                document.getElementById("obAction").innerHTML +=
-                "<option value=\""+action+"\">"
-            }
-            objects.delete("Copyright notices")
-            objects.delete("License text")
-            objects.delete("License notices")
-            for (var object of objects) {
-                document.getElementById("obObject").innerHTML +=
-                "<option value=\""+object+"\">"
-            }
+
+            return suggestions;
         }
-        const prefix = "|-- ",
-            prefix_last = "`-- ",
-            spacer = "|   ",
-            spacer_e = "    ",
-            ul_template = $("#template > ul"),
-            li_template = $("li", ul_template).first();
+
+        function getObligationSuggestions() {
+            var suggestions = {};
+            suggestions['LE'] = new Set();
+            suggestions['Action'] = new Set();
+            suggestions['Object'] = new Set();
+
+            <core_rt:forEach items="${obligationElementList}" var="obligationElement">
+                suggestions['LE'].add("<sw360:out value='${obligationElement.langElement}'/>");
+                suggestions['Action'].add("<sw360:out value='${obligationElement.action}'/>");
+                suggestions['Object'].add("<sw360:out value='${obligationElement.object}'/>");
+            </core_rt:forEach>
+
+            if (suggestions['LE'].size === 0) {
+                suggestions['LE'].add("YOU MUST")
+                suggestions['LE'].add("YOU NOT MUST")
+            }
+
+            if (suggestions['Action'].size === 0) {
+                suggestions['Action'].add("Provide")
+                suggestions['Action'].add("Modify")
+            }
+
+            if (suggestions['Object'].size === 0) {
+                suggestions['Object'].add("Copyright notices")
+                suggestions['Object'].add("License text")
+            }
+
+            return suggestions;
+        }
+
+        function addSuggestion(selector, suggestions) {
+            $.each($(selector), function(i, element) {
+                $(element).empty();
+                $.each(suggestions, function(j, suggestion) {
+                    $(element).html($(element).html() + "<option value=\"" + suggestion + "\">");
+                });
+            });
+        }
+
+        addSuggestion(".typeListData", getJSONObjectKeys(typeSuggestions));
+        addSuggestion(".obLangElementData", Array.from(obligationSuggestions['LE']));
+        addSuggestion(".obActionData", Array.from(obligationSuggestions['Action']));
+        addSuggestion(".obObjectData", Array.from(obligationSuggestions['Object']));
+
 
         $(".elementType").each(function() {
             showElementControls($(this));
@@ -174,6 +214,12 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* 
 
         function changeElementType() {
             showElementControls($(this));
+
+            const type = $(this).val();
+
+            if (typeSuggestions.hasOwnProperty(type)) {
+                addSuggestion($(this).siblings('.otherTextData'), Array.from(typeSuggestions[type]));
+            }
         }
 
         function showElementControls(typeControl) {
@@ -206,78 +252,42 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* 
             });
         }
 
-        const action = {
-            "add-sibling": function (obj) {
-                var newNode = ul_template.clone();
-                obj.parent().after(newNode);
-                $('.elementType').on('change keyup', changeElementType);
-                showElementControls(newNode.find(".elementType"));
-            },
-            "add-child": function (obj) {
-                console.log(obj);
-                var newNode = ul_template.clone();
-                obj.append(newNode);
-                $('.elementType').on('change keyup', changeElementType);
-                showElementControls(newNode.find(".elementType"));
-            },
-            delete: function (obj) {
-                obj.parent().remove();
-            },
-            "import": function (obj) {
-                $dialog = dialog.open('#searchObligationElementsDialog')
-            },
-        };
-
-        $(document).on("click", "li.tree-node .controls > a", function () {
-            action[this.getAttribute("data-func")]($(this).closest("li"));
-            rebuild_tree();
-            return false;
-        });
-
-        function get_subdir_text(obj, pad) {
+        function getNodeText(node, pad) {
             let padding = pad || "",
                 out = "",
-                items = obj.children("li"),
-                last = items.length - 1;
+                items = node.children("li");
 
             items.each(function (index) {
-                const $this = $(this);
-                if ($this.attr('id') != "root") {
-                    if ($this.children(".elementType").val() == "Obligation") {
-                        out +=
-                        padding +
-                        ($this.children(".obLangElement").val() == null ? "" : $this.children(".obLangElement").val()) + " " +
-                        ($this.children(".obAction").val() == null ? "" : $this.children(".obAction").val()) + " " +
-                        ($this.children(".obObject").val() == null ? "" : $this.children(".obObject").val()) + " " +
-                        "\n";
+                if ($(this).attr('id') != "root") {
+                    if ($(this).children(".elementType").val() == "Obligation") {
+                        out += padding +
+                                ($(this).children(".obLangElement").val() == null ? "" : $(this).children(".obLangElement").val()) + " " +
+                                ($(this).children(".obAction").val() == null ? "" : $(this).children(".obAction").val()) + " " +
+                                ($(this).children(".obObject").val() == null ? "" : $(this).children(".obObject").val()) + " " +
+                                "\n";
                     } else {
-                        out +=
-                        padding +
-                        $this.children(".elementType").val() + " " +
-                        ($this.children(".other").val() == null ? "" : $this.children(".other").val()) + " " +
-                        "\n";
+                        out += padding +
+                                $(this).children(".elementType").val() + " " +
+                                ($(this).children(".other").val() == null ? "" : $(this).children(".other").val()) + " " +
+                                "\n";
                     }
                 }
 
-                const subdirs = $this.children("ul");
-                if (subdirs.length) {
-                    out += get_subdir_text(
-                        subdirs,
-                        padding +
-                        spacer_e
-                    );
+                const childNodes = $(this).children("ul");
+
+                if (childNodes.length) {
+                    out += getNodeText(childNodes, padding + indent);
                 }
             });
+
             return out;
         }
 
-        function rebuild_tree() {
-            $("#out").text(get_subdir_text($("#obligationText")));
+        function updatePreview() {
+            $("#out").text(getNodeText($("#obligationText")));
         }
 
-        // $("#tree").append(li_template.clone());
-        $(document).on("keyup", "#tree input", rebuild_tree);
-        //$("#p_name").on("keyup", rebuild_tree);
+        $(document).on("keyup", "#tree input", updatePreview);
 
         $(document)
             .on("mouseover", "li, #tree", function (e) {
@@ -288,7 +298,8 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* 
                 $(this).children(".controls").hide();
                 e.stopPropagation();
             });
-        rebuild_tree();
+
+        updatePreview();
     });
 });
 </script>

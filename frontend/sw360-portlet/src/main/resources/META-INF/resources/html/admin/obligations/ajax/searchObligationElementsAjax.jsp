@@ -19,7 +19,7 @@
         <tr>
             <td>
                 <div class="form-check">
-                    <input type="checkbox" class="form-check-input" name="<portlet:namespace/>obligationElementId" value="${entry.id}">
+                    <input type="radio" class="form-check-input" name="<portlet:namespace/>obligationElementId" lang="${entry.langElement}" action="${entry.action}" object="${entry.object}">
                 </div>
             </td>
             <td>
