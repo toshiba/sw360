@@ -88,15 +88,13 @@ public class TodoPortlet extends Sw360Portlet {
     private void serveObligationElementSearchResults(ResourceRequest request, ResourceResponse response, String searchText) throws IOException, PortletException {
         final User user = UserCacheHolder.getUserFromRequest(request);
         List<ObligationElement> searchResult;
-
         try {
             LicenseService.Iface client = thriftClients.makeLicenseClient();
             if (isNullOrEmpty(searchText)) {
                 searchResult = client.getObligationElements();
             } else {
                 // need to update for search if input (where)
-                searchResult = null;
-                //client.search(searchText);
+                searchResult = client.searchObligationElement(searchText);
             }
         } catch (TException e) {
             log.error("Error searching Obligation Element", e);

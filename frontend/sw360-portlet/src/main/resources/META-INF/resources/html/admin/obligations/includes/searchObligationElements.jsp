@@ -1,3 +1,14 @@
+<%--
+  ~ Copyright Toshiba corporation, 2021. Part of the SW360 Portal Project.
+  ~ Copyright Toshiba Software Development (Vietnam) Co., Ltd., 2021. Part of the SW360 Portal Project.
+  ~
+  ~ This program and the accompanying materials are made
+  ~ available under the terms of the Eclipse Public License 2.0
+  ~ which is available at https://www.eclipse.org/legal/epl-2.0/
+  ~
+  ~ SPDX-License-Identifier: EPL-2.0
+  --%>
+
 <%@ page import="com.liferay.portal.kernel.portlet.PortletURLFactoryUtil" %>
 <%@include file="/html/init.jsp" %>
 <portlet:defineObjects/>
@@ -57,114 +68,3 @@
 		</div>
 	</div>
 </div>
-
-<script>
-    require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', /* jquery-plugins,  'jquery-ui',*/ 'utils/link', 'utils/includes/clipboard'], function($, dialog, datatables, keyboard, link, clipboard) {
-       var $dataTable,
-            $dialog;
-        keyboard.bindkeyPressToClick('searchobligationelement', 'searchbuttonobligation');
-
-        $('[data-dismiss=modal]').on('click', function (e) {
-            var $t = $(this),
-            target = $t[0].href || $t.data("target") || $t.parents('.modal') || [];
-
-        $(target)
-           .find("input,textarea,select")
-               .val('')
-               .end()
-           .find("input[type=checkbox], input[type=radio]")
-               .prop("checked", "")
-               .end();
-        })
-
-        // $('#addLinkedProjectButton').on('click', showProjectDialog);
-        // $('#linkToProjectButton').on('click', showProjectDialogForLinkToProj);
-        $('#searchbuttonobligation').on('click', function() {
-            showObligationElementDialog()
-            obligationElementContentFromAjax('<%=PortalConstants.OBLIGATION_ELEMENT_SEARCH%>', $('#searchobligationelement').val(), function(data) {
-                if($dataTable) {
-                    $dataTable.destroy();
-                }
-                $('#obligationElementSearchResultstable tbody').html(data);
-                makeObligatiobElementsDataTable();
-            });
-        });
-
-        $('#obligationElementSearchResultstable').on('change', 'input', function() {
-            $dialog.enablePrimaryButtons($('#obligationElementSearchResultstable input:checked').length > 0);
-        });
-
-        $('#copyToClipboard').on('click', function(event) {
-            let textSelector = "table tr td#documentId",
-            textToCopy = $(textSelector).clone().children().remove().end().text().trim();
-            clipboard.copyToClipboard(textToCopy, textSelector);
-        });
-
-        function makeObligatiobElementsDataTable() {
-            $dataTable = datatables.create('#obligationElementSearchResultstable', {
-                destroy: true,
-                paging: false,
-                info: false,
-                language: {
-                    emptyTable: "<liferay-ui:message key="no.obligation.element.found" />",
-                    processing: "<liferay-ui:message key="processing" />",
-                    loadingRecords: "<liferay-ui:message key="loading" />"
-                },
-                select: 'multi+shift'
-            }, undefined, [0]);
-            datatables.enableCheckboxForSelection($dataTable, 0);
-        }
-
-        function obligationElementContentFromAjax(what, where, callback) {
-            $dialog.$.find('.spinner').show();
-            $dialog.$.find('#obligationElementSearchResultstable').hide();
-            $dialog.$.find('#searchbuttonobligation').prop('disabled', true);
-            $dialog.enablePrimaryButtons(false);
-
-            jQuery.ajax({
-                type: 'POST',
-                url: '<%=viewObligationELementURL%>',
-                data: {
-                    '<portlet:namespace/><%=PortalConstants.WHAT%>': what,
-                    '<portlet:namespace/><%=PortalConstants.WHERE%>': where
-                },
-                success: function (data) {
-                    callback(data);
-
-                    $dialog.$.find('.spinner').hide();
-                    $dialog.$.find('#obligationElementSearchResultstable').show();
-                    $dialog.$.find('#searchbuttonobligation').prop('disabled', false);
-                },
-                error: function() {
-                    $dialog.alert('Can not import Obligation ELement');
-                }
-            });
-        }
-
-        function showObligationElementDialog() {
-            if($dataTable) {
-                $dataTable.destroy();
-                $dataTable = undefined;
-            }
-
-            $dialog = dialog.open('#searchObligationElementsDialog', {
-            }, function(submit, callback) {
-                var obligationElement = [];
-                if($("input[type='radio'].form-check-input").is(':checked')) {
-                    var selected_value =  $("input[type='radio'].form-check-input:checked").val();
-                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("lang"));
-                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("action"));
-                    obligationElement.push($("input[type='radio'].form-check-input:checked").attr("object"));
-                }
-                // return obligation will be imported
-                console.log(obligationElement)
-                callback(true);
-            }, function() {
-                this.$.find('.spinner').hide();
-                this.$.find('#obligationElementSearchResultstable').hide();
-                this.$.find('#searchobligationelement').val('');
-                this.enablePrimaryButtons(false);
-            });
-        }
-    });
-</script>

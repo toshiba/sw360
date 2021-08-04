@@ -20,6 +20,7 @@ import org.eclipse.sw360.datahandler.thrift.CustomProperties;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
 import org.eclipse.sw360.licenses.db.LicenseDatabaseHandler;
+import org.eclipse.sw360.datahandler.db.ObligationElementSearchHandler;
 import org.ektorp.http.HttpClient;
 
 import com.cloudant.client.api.CloudantClient;
@@ -30,6 +31,7 @@ import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.io.IOException;
 
 import static org.eclipse.sw360.datahandler.common.SW360Assert.*;
 
@@ -41,13 +43,16 @@ import static org.eclipse.sw360.datahandler.common.SW360Assert.*;
 public class LicenseHandler implements LicenseService.Iface {
 
     LicenseDatabaseHandler handler;
+    ObligationElementSearchHandler searchHandler;
 
-    LicenseHandler() throws MalformedURLException {
+    LicenseHandler() throws MalformedURLException, IOException {
         handler = new LicenseDatabaseHandler(DatabaseSettings.getConfiguredClient(), DatabaseSettings.COUCH_DB_DATABASE);
+        searchHandler = new ObligationElementSearchHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.getConfiguredClient(), DatabaseSettings.COUCH_DB_DATABASE);
     }
 
-    LicenseHandler(Supplier<CloudantClient> httpClient, String dbName) throws MalformedURLException {
+    LicenseHandler(Supplier<CloudantClient> httpClient, String dbName) throws MalformedURLException, IOException {
         handler = new LicenseDatabaseHandler(httpClient, dbName);
+        searchHandler = new ObligationElementSearchHandler(DatabaseSettings.getConfiguredHttpClient(), DatabaseSettings.getConfiguredClient(), dbName);
     }
 
     /////////////////////
@@ -325,6 +330,11 @@ public class LicenseHandler implements LicenseService.Iface {
     @Override
     public String buildObligationText(String nodes, String level) throws TException {
         return handler.buildObligationText(nodes, Integer.parseInt(level));
+    }
+
+    @Override
+    public List<ObligationElement> searchObligationElement(String text) throws TException {
+        return searchHandler.search(text);
     }
 
 }

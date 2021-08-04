@@ -73,13 +73,6 @@ public class ThriftValidate {
         obligationNode.setType(TYPE_OBLIGATIONNODE);
     }
 
-    public static void prepareObligationSuggestion(ObligationSuggestion obligationSuggestion) throws SW360Exception {
-        // Check required fields
-        assertNotNull(obligationSuggestion);
-        // Check type
-        obligationSuggestion.setType(TYPE_OBLIGATIONSUGGESTION);
-    }
-
     public static void prepareLicense(License license) throws SW360Exception {
         // Check required fields
         assertNotNull(license);

@@ -72,26 +72,21 @@ struct LicenseType {
 
 struct ObligationNode {
     1: optional string id,
-    2: optional string nodeType,
-    3: optional string nodeText,
-	5: optional string oblElementId,
-    6: optional string type = "obligationNode",
+    2: optional string revision,
+    3: optional string type = "obligationNode",
+    4: optional string nodeType,
+    5: optional string nodeText,
+    6: optional string oblElementId
 }
 
 struct ObligationElement {
     1: optional string id,
-    2: required string langElement,
-    3: required string action,
-	5: required string object,
-    6: optional string status,
-    7: optional string type = "obligationElement",
-}
-
-struct ObligationSuggestion {
-    1: optional string id,
-    2: required string suggestionType,
-    3: required set<string> suggestionData,
-    7: optional string type = "obligationSuggestion",
+    2: optional string revision,
+    3: optional string type = "obligationElement",
+    4: required string langElement,
+    5: required string action,
+    6: required string object,
+    7: optional string status
 }
 
 struct License {
@@ -311,4 +306,11 @@ service LicenseService {
      * build obligation text after addNodes
      **/
     string buildObligationText(1: string nodes, 2: string level)
+
+    // Search functions
+
+    /**
+     * global search function to list obigation elements which match the text argument
+     */
+    list<ObligationElement> searchObligationElement(1: string text);
 }
