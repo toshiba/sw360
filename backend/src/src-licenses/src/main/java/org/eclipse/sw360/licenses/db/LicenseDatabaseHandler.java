@@ -98,7 +98,7 @@ public class LicenseDatabaseHandler {
                 obligRepository,
                 customPropertiesRepository,
                 obligationElementRepository,
-                obligationNodeRepository,
+                obligationNodeRepository
         };
 
         moderator = new LicenseModerator();
@@ -278,11 +278,9 @@ public class LicenseDatabaseHandler {
                 }
             }
                 obligationNodeRepository.add(obligationNode);
-                //addObligationSuggestions(obligationNode);
                 return obligationNode.getId();
         } else {
             obligationNodeRepository.add(obligationNode);
-            //addObligationSuggestions(obligationNode);
             return obligationNode.getId();
         }
     }
