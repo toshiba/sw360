@@ -120,7 +120,9 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 obj.parent().remove();
             },
             "import": function (obj) {
-                showObligationElementDialog()
+                obj.find(".elementType").val("Obligation")
+                obj.find(".other").attr("style","display:none;")
+                showObligationElementDialog(obj)
             },
         };
 
@@ -329,7 +331,8 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                .end();
         })
 
-        $('#searchbuttonobligation').on('click', function() {
+        // if search func work can call func showObligationElements() after click #searchbuttonobligation
+        function showObligationElements(){
             obligationElementContentFromAjax('<%=PortalConstants.OBLIGATION_ELEMENT_SEARCH%>', $('#searchobligationelement').val(), function(data) {
                 if($dataTable) {
                     $dataTable.destroy();
@@ -337,7 +340,7 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 $('#obligationElementSearchResultstable tbody').html(data);
                 makeObligatiobElementsDataTable();
             });
-        });
+        }
 
         $('#obligationElementSearchResultstable').on('change', 'input', function() {
             $dialog.enablePrimaryButtons($('#obligationElementSearchResultstable input:checked').length > 0);
@@ -390,7 +393,7 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
             });
         }
 
-        function showObligationElementDialog() {
+        function showObligationElementDialog(obj) {
             if($dataTable) {
                 $dataTable.destroy();
                 $dataTable = undefined;
@@ -407,6 +410,9 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 }
                 // return obligation will be imported
                 console.log(obligationElement)
+                obj.find(".obLangElement").attr("style","").val(obligationElement[0])
+                obj.find(".obAction").attr("style","").val(obligationElement[1])
+                obj.find(".obObject").attr("style","").val(obligationElement[2])
                 callback(true);
             }, function() {
                 this.$.find('.spinner').hide();
@@ -414,6 +420,7 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 this.$.find('#searchobligationelement').val('');
                 this.enablePrimaryButtons(false);
             });
+            showObligationElements()
         }
     });
 });

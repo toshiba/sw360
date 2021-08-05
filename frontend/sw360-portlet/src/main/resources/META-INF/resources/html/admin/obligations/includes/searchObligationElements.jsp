@@ -29,7 +29,7 @@
 			<div class="modal-body container">
 
                     <form>
-                        <div class="row form-group">
+                        <div class="row form-group" style="display:none;">
                             <div class="col">
                                 <input type="text" name="searchobligationelement" id="searchobligationelement" placeholder="<liferay-ui:message key="enter.search.text" />" class="form-control"/>
                             </div>
