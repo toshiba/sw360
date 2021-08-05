@@ -163,6 +163,10 @@
                 }
             });
 
+            if ($(node).find('.elementType').val() == "Obligation") {
+                nodeValues.push("UNDEFINED")
+            }
+
             return nodeValues;
         }
     });

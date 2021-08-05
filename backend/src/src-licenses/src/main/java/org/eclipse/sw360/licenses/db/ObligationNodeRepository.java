@@ -28,7 +28,7 @@ public class ObligationNodeRepository extends DatabaseRepositoryCloudantClient<O
     private static final String ALL = "function(doc) { if (doc.type == 'obligationNode') emit(null, doc._id) }";
     private static final String BYNODETYPE = "function(doc) { if(doc.type == 'obligationNode') { emit(doc.nodeType, doc) } }";
     private static final String BYNODETEXT = "function(doc) { if(doc.type == 'obligationNode') { emit(doc.nodeText, doc) } }";
-
+    private static final String BYOBLIGATIONID = "function(doc) { if(doc.type == 'obligationNode') { emit(doc.oblElementId, doc) } }";
 
     public ObligationNodeRepository(DatabaseConnectorCloudant db) {
         super(db, ObligationNode.class);
@@ -36,7 +36,7 @@ public class ObligationNodeRepository extends DatabaseRepositoryCloudantClient<O
         views.put("all", createMapReduce(ALL, null));
         views.put("byobligationnodetype", createMapReduce(BYNODETYPE, null));
         views.put("byobligationnodetext", createMapReduce(BYNODETEXT, null));
-
+        views.put("byobligationid", createMapReduce(BYOBLIGATIONID, null));
         initStandardDesignDocument(views, db);
     }
 
@@ -46,6 +46,10 @@ public class ObligationNodeRepository extends DatabaseRepositoryCloudantClient<O
 
     public List<ObligationNode> searchByObligationNodeText(String text) {
         return queryByPrefix("byobligationnodetext", text);
+    }
+
+    public List<ObligationNode> searchByObligationNodeOblElementId(String oblElementId) {
+        return queryByPrefix("byobligationid", oblElementId);
     }
 
 }

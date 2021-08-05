@@ -37,6 +37,12 @@ enum ObligationType {
     OBLIGATION = 4
 }
 
+enum ObligationElementStatus {
+    UPDATED = 0,
+    DEFINED = 1
+    UNDEFINED = 2
+}
+
 struct Obligation {
     1: optional string id,
     2: optional string revision,
@@ -86,7 +92,7 @@ struct ObligationElement {
     4: required string langElement,
     5: required string action,
     6: required string object,
-    7: optional string status
+    7: optional ObligationElementStatus status
 }
 
 struct License {

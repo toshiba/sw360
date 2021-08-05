@@ -229,27 +229,15 @@ public class LicenseDatabaseHandler {
         }
         prepareObligationElement(obligationElement);
         // check existed obligation element
-        String obligationElementId = "";
-        Set<String> ids = obligationElementRepository.getAllIds();
-        if (!ids.isEmpty()){
-            for (String id : ids) {
-                ObligationElement obligationElementExisted = obligationElementRepository.get(id);
-                String obligationElementOld = obligationElementExisted.getLangElement() + obligationElementExisted.getAction() + obligationElementExisted.getObject();
-                String obligationElementNew = obligationElement.getLangElement() + obligationElement.getAction() + obligationElement.getObject();
-                if (obligationElementNew.equals(obligationElementOld)) {
-                    obligationElementId = id;
-                    break;
-                }
-            }
-            if (obligationElementId.equals("")) {
-                obligationElementRepository.add(obligationElement);
-                obligationElementId = obligationElement.getId();
-            }
-        } else {
+        List<ObligationElement> existedObligationElement = new ArrayList<>();
+        existedObligationElement = isExistedObligationElement(obligationElement);
+
+        if (existedObligationElement.isEmpty()) {
             obligationElementRepository.add(obligationElement);
-            obligationElementId = obligationElement.getId();
+            return obligationElement.getId();
+        } else {
+            return existedObligationElement.get(0).getId();
         }
-        return obligationElementId;
     }
 
 
@@ -264,24 +252,14 @@ public class LicenseDatabaseHandler {
         }
         prepareObligationNode(obligationNode);
         // check existed node
-        Set<String> ids = obligationNodeRepository.getAllIds();
-        if (!ids.isEmpty()){
-            for (String id : ids) {
-                ObligationNode obligationNodeExisted = obligationNodeRepository.get(id);
-                if (obligationNodeExisted.getNodeType().equals("Obligation") &&
-                    obligationNodeExisted.getOblElementId().equals(obligationNode.getOblElementId())) {
-                    return id;
-                }
-                if (!obligationNodeExisted.getNodeType().equals("Obligation") &&
-                    obligationNodeExisted.getNodeType().equals(obligationNode.getNodeType()) &&  obligationNodeExisted.getNodeText().equals(obligationNode.getNodeText())) {
-                    return id;
-                }
-            }
-                obligationNodeRepository.add(obligationNode);
-                return obligationNode.getId();
-        } else {
+        List<ObligationNode> existedObligationNode = new ArrayList<>();
+        existedObligationNode = isExistedObligationNode(obligationNode);
+
+        if (existedObligationNode.isEmpty()) {
             obligationNodeRepository.add(obligationNode);
             return obligationNode.getId();
+        } else {
+            return existedObligationNode.get(0).getId();
         }
     }
 
@@ -690,16 +668,35 @@ public class LicenseDatabaseHandler {
     }
 
     private List<ObligationNode> isExistedObligationNode(ObligationNode obligationNode) {
-        String type = obligationNode.getNodeType();
-        String text = obligationNode.getNodeText();
-        List<ObligationNode> duplicatesType = obligationNodeRepository.searchByObligationNodeType(type);
-        List<ObligationNode> duplicatesText = obligationNodeRepository.searchByObligationNodeText(text);
-        duplicatesText.retainAll(duplicatesType);
-        if (duplicatesText.isEmpty()) {
-            return duplicatesText;
-        }
+        String nodeType = obligationNode.getNodeType();
+        List<ObligationNode> existedObligationElement = new ArrayList<>();
 
-        return Collections.emptyList();
+        if (nodeType.equals("Obligation")) {
+            String oblElementId = obligationNode.getOblElementId();
+            existedObligationElement = obligationNodeRepository.searchByObligationNodeType(nodeType);
+            existedObligationElement.retainAll(obligationNodeRepository.searchByObligationNodeOblElementId(oblElementId));
+        } else {
+            String nodeText = obligationNode.getNodeText();
+            existedObligationElement = obligationNodeRepository.searchByObligationNodeType(nodeType);
+            existedObligationElement.retainAll(obligationNodeRepository.searchByObligationNodeText(nodeText));
+        }
+        return existedObligationElement;
+    }
+
+    private List<ObligationElement> isExistedObligationElement(ObligationElement obligationElement) {
+        String lang = obligationElement.getLangElement();
+        String action = obligationElement.getAction();
+        String object = obligationElement.getObject();
+        List<ObligationElement> existedObligationElement = new ArrayList<>();
+
+        existedObligationElement = obligationElementRepository.searchByObligationLang(lang);
+        existedObligationElement.retainAll(obligationElementRepository.searchByObligationAction(action));
+        existedObligationElement.retainAll(obligationElementRepository.searchByObligationObject(object));
+
+        if (existedObligationElement.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return existedObligationElement;
     }
 
     public RequestStatus deleteLicense(String id, User user) throws SW360Exception {
@@ -934,6 +931,11 @@ public class LicenseDatabaseHandler {
             obligationElement.setLangElement(jsonArray.getString(1));
             obligationElement.setAction(jsonArray.getString(2));
             obligationElement.setObject(jsonArray.getString(3));
+            if (jsonArray.getString(4).equals(ObligationElementStatus.UNDEFINED.toString())) {
+                obligationElement.setStatus(ObligationElementStatus.UNDEFINED);
+            } else {
+                obligationElement.setStatus(ObligationElementStatus.DEFINED);
+            }
 
             ObligationNode obligationNode = new ObligationNode();
             obligationNode.setNodeType("Obligation");
