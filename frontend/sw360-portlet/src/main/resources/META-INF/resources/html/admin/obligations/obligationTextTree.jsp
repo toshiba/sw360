@@ -22,14 +22,14 @@
         <div class="wrapper">
             <div class="main-ctn">
                 <div id="tree">
-                    <h2>Input</h2>
+                    <b><liferay-ui:message key="input" /></b>
                     <ul id="obligationText">
                         <li class="tree-node" id="root">
-                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="Title">
+                            <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="<liferay-ui:message key="title" />">
                             <span class="controls">
                                 &raquo;
                                 <a class="btn-link" href="#" data-func="add-child"
-                                    >+child</a
+                                    >+<liferay-ui:message key="child" /></a
                                 >
                             </span>
                         </li>
@@ -39,7 +39,7 @@
                 <hr />
 
                 <div class="right">
-                    <h2 class="app-subtitle">Preview</h2>
+                    <b class="app-subtitle"><liferay-ui:message key="preview" /></b>
 
                     <div class="output-tree-ctn">
                         <pre id="out"></pre>
@@ -52,36 +52,36 @@
     <div style="display: none;" class="hidden" id="template">
         <ul>
             <li class="tree-node">
-                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TYPE%>" class="elementType" list="typeList" placeholder="Type">
+                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TYPE%>" class="elementType" list="typeList" placeholder="<liferay-ui:message key="type" />">
                 <datalist id="typeList" class="typeListData">
                     <option value="Obligation">
                 </datalist>
 
                 <%-- Obligation element --%>
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.LANG_ELEMENT%>" class="obLangElement" list="obLangElement" element-type="Obligation" placeholder="Language Element">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.LANG_ELEMENT%>" class="obLangElement" list="obLangElement" element-type="Obligation" placeholder="<liferay-ui:message key="language.element" />">
                 <datalist id="obLangElement" class="obLangElementData">
                 </datalist>
 
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.ACTION%>" class="obAction" list="obAction" element-type="Obligation" placeholder="Action">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.ACTION%>" class="obAction" list="obAction" element-type="Obligation" placeholder="<liferay-ui:message key="action" />">
                 <datalist id="obAction" class="obActionData">
                 </datalist>
 
-                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.OBJECT%>" class="obObject" list="obObject" element-type="Obligation" placeholder="Object">
+                <input type="text" name="<portlet:namespace/><%=ObligationElement._Fields.OBJECT%>" class="obObject" list="obObject" element-type="Obligation" placeholder="<liferay-ui:message key="object" />">
                 <datalist id="obObject" class="obObjectData">
                 </datalist>
 
                 <%-- Other Type --%>
-                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" list="otherText" element-type="Other" placeholder="Text">
+                <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="other" list="otherText" element-type="Other" placeholder="<liferay-ui:message key="text" />">
                 <datalist id="otherText" class="otherTextData">
                 </datalist>
 
                 <%-- Action with element --%>
                 <span class="controls">
                     &raquo;
-                    <a class="btn-link" href="#"Attribute data-func="add-sibling">+sibling</a> |
-                    <a class="btn-link" href="#" data-func="add-child">+child</a> |
-                    <a class="btn-link" href="#" data-func="delete">delete</a> |
-                    <a class="btn-link" href="#" data-func="import" id="importObligationElementtButton">import</a>
+                    <a class="btn-link" href="#"Attribute data-func="add-sibling">+<liferay-ui:message key="sibling" /></a> |
+                    <a class="btn-link" href="#" data-func="add-child">+<liferay-ui:message key="child" /></a> |
+                    <a class="btn-link" href="#" data-func="delete"><liferay-ui:message key="delete" /></a> |
+                    <a class="btn-link" href="#" data-func="import" id="importObligationElementtButton"><liferay-ui:message key="import" /></a>
                 </span>
             </li>
         </ul>

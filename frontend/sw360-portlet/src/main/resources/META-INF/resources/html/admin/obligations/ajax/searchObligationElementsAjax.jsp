@@ -30,7 +30,7 @@
                 <sw360:out value="${entry.action}"/>
             </td>
             <td>
-            <sw360:out value="${entry.object}"/>
+                <sw360:out value="${entry.object}"/>
             </td>
         </tr>
     </core_rt:forEach>
