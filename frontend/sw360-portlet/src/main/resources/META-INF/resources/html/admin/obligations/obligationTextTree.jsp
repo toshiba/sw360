@@ -17,12 +17,36 @@
 <jsp:useBean id="obligationNodeList" type="java.util.List<org.eclipse.sw360.datahandler.thrift.licenses.ObligationNode>" scope="request"/>
 <jsp:useBean id="obligationElementList" type="java.util.List<org.eclipse.sw360.datahandler.thrift.licenses.ObligationElement>" scope="request"/>
 
+<style type="text/css">
+.tree-container {
+    padding-left: 0;
+}
+
+.tree-container ul,
+.tree-container li {
+    list-style-type: circle;
+    margin: 0.5rem;
+}
+
+.tree-container .btn-link {
+    color: blue;
+}
+
+#obligationText {
+    padding-left: 0;
+    list-style-type: none !important;
+}
+
+#out {
+    font-size: 100%;
+}
+</style>
+
 <div id="obligationTree">    
-    <main class="container">
+    <main class="container tree-container">
         <div class="wrapper">
             <div class="main-ctn">
                 <div id="tree">
-                    <b><liferay-ui:message key="input" /></b>
                     <ul id="obligationText">
                         <li class="tree-node" id="root">
                             <input type="text" name="<portlet:namespace/><%=ObligationNode._Fields.NODE_TEXT%>" class="elementType" placeholder="<liferay-ui:message key="title" />">
@@ -90,9 +114,10 @@
 <%@ include file="/html/admin/obligations/includes/searchObligationElements.jsp" %>
 <%@ include file="/html/utils/includes/requirejs.jspf" %>
 <script>
-require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'utils/cssloader', /* jquery-plugins,  'jquery-ui', 'utils/link', 'utils/includes/clipboard' */], function($, dialog, datatables, keyboard, cssloader,/* link, clipboard */) {
+require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'utils/cssloader'], function($, dialog, datatables, keyboard, cssloader) {
     var $dataTable,
     $dialog;
+
     $(document).ready(function () {
         const indent = "    ",                  // Use 4 spaces for indentation of previewing
             ul_template = $("#template > ul");
@@ -332,13 +357,13 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
         })
 
         // if search func work can call func showObligationElements() after click #searchbuttonobligation
-        function showObligationElements(){
+        function showObligationElements() {
             obligationElementContentFromAjax('<%=PortalConstants.OBLIGATION_ELEMENT_SEARCH%>', $('#searchobligationelement').val(), function(data) {
-                if($dataTable) {
-                    $dataTable.destroy();
-                }
-                $('#obligationElementSearchResultstable tbody').html(data);
-                makeObligatiobElementsDataTable();
+                    if ($dataTable) {
+                        $dataTable.destroy();
+                    }
+                    $('#obligationElementSearchResultstable tbody').html(data);
+                    makeObligatiobElementsDataTable();
             });
         }
 
@@ -351,21 +376,6 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
             textToCopy = $(textSelector).clone().children().remove().end().text().trim();
             clipboard.copyToClipboard(textToCopy, textSelector);
         });
-
-        function makeObligatiobElementsDataTable() {
-            $dataTable = datatables.create('#obligationElementSearchResultstable', {
-                destroy: true,
-                paging: false,
-                info: false,
-                language: {
-                    emptyTable: "<liferay-ui:message key="no.obligation.element.found" />",
-                    processing: "<liferay-ui:message key="processing" />",
-                    loadingRecords: "<liferay-ui:message key="loading" />"
-                },
-                select: 'multi+shift'
-            }, undefined, [0]);
-            datatables.enableCheckboxForSelection($dataTable, 0);
-        }
 
         function obligationElementContentFromAjax(what, where, callback) {
             $dialog.$.find('.spinner').show();
@@ -391,6 +401,21 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                     $dialog.alert('Can not import Obligation ELement');
                 }
             });
+        }
+
+        function makeObligatiobElementsDataTable() {
+            $dataTable = datatables.create('#obligationElementSearchResultstable', {
+                destroy: true,
+                paging: false,
+                info: false,
+                language: {
+                    emptyTable: "<liferay-ui:message key="no.obligation.element.found" />",
+                    processing: "<liferay-ui:message key="processing" />",
+                    loadingRecords: "<liferay-ui:message key="loading" />"
+                },
+                select: 'multi+shift'
+            }, undefined, [0]);
+            datatables.enableCheckboxForSelection($dataTable, 0);
         }
 
         function showObligationElementDialog(obj) {
@@ -420,7 +445,7 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 this.$.find('#searchobligationelement').val('');
                 this.enablePrimaryButtons(false);
             });
-            showObligationElements()
+            showObligationElements();
         }
     });
 });

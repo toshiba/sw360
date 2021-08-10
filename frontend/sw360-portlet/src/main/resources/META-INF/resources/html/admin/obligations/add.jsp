@@ -16,7 +16,6 @@
 <portlet:defineObjects />
 <liferay-theme:defineObjects />
 
-
 <%@ page import="javax.portlet.PortletRequest" %>
 <%@ page import="com.liferay.portal.kernel.portlet.PortletURLFactoryUtil" %>
 <%@ page import="org.eclipse.sw360.datahandler.thrift.licenses.Obligation" %>
@@ -55,16 +54,14 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>
-                                        <div class="form-group">
+                                    <td style="display: flex; width: 100%;">
+                                        <div style="flex: 1; margin-right: 1rem;" class="form-group">
                                             <label for="todoTitle"><liferay-ui:message key="title" /></label>
                                             <input id="todoTitle" type="text" required class="form-control" placeholder="<liferay-ui:message key="enter.title" />" name="<portlet:namespace/><%=Obligation._Fields.TITLE%>"/>
                                             <div class="invalid-feedback">
                                                 <liferay-ui:message key="please.enter.a.title" />
                                             </div>
                                         </div>
-                                    </td>
-                                    <td colspan="2">
                                         <div class="form-group" style="display: none;">
                                             <label for="obligsText"><liferay-ui:message key="text" /></label>
                                             <input id="obligsText" type="text" required class="form-control" placeholder="<liferay-ui:message key="enter.text" />" name="<portlet:namespace/><%=Obligation._Fields.TEXT%>"/>
@@ -72,35 +69,29 @@
                                                 <liferay-ui:message key="please.enter.a.text" />
                                             </div>
                                         </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="form-group">
+                                        <div style="flex: 1; margin-right: 1rem;" class="form-group">
                                             <label for="obligationType"><liferay-ui:message key="obligation.type" /></label>
                                             <select class="form-control" id="obligationType" name="<portlet:namespace/><%=Obligation._Fields.OBLIGATION_TYPE%>">
                                                 <option value="">Select Obligation Type</option>
                                                 <sw360:DisplayEnumOptions type="<%=ObligationType.class%>" selected="${todo.obligationType}"/>
                                             </select>
                                         </div>
-                                    </td>
-                                    <td>
-                                    <div class="form-group">
-                                        <label for="obligationLevel"><liferay-ui:message key="obligation.level" /></label>
-                                        <select class="form-control" id="obligationLevel" name="<portlet:namespace/><%=Obligation._Fields.OBLIGATION_LEVEL%>">
-                                            <sw360:DisplayEnumOptions type="<%=ObligationLevel.class%>" selected="${todo.obligationLevel}"/>
-                                        </select>
-                                        <small class="form-text">
-                                             <sw360:DisplayEnumInfo type="<%=ObligationLevel.class%>"/>
-                                              <liferay-ui:message key="learn.more.about.obligation.level"/>
-                                        </small>
-                                     </div>
+                                        <div style="flex: 1; margin-right: 1rem;" class="form-group">
+                                            <label for="obligationLevel"><liferay-ui:message key="obligation.level" /></label>
+                                            <select class="form-control" id="obligationLevel" name="<portlet:namespace/><%=Obligation._Fields.OBLIGATION_LEVEL%>">
+                                                <sw360:DisplayEnumOptions type="<%=ObligationLevel.class%>" selected="${todo.obligationLevel}"/>
+                                            </select>
+                                            <small class="form-text">
+                                                <sw360:DisplayEnumInfo type="<%=ObligationLevel.class%>"/>
+                                                <liferay-ui:message key="learn.more.about.obligation.level"/>
+                                            </small>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td colspan="3">
                                         <div class="form-group">
-                                            <label for="obligsText"><liferay-ui:message key="text" /></label>
+                                            <label for="obligsText"><liferay-ui:message key="text"/></label>
                                             <%@ include file="obligationTextTree.jsp" %>
                                         </div>
                                     </td>

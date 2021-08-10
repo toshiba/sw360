@@ -23,13 +23,12 @@
 </portlet:resourceURL>
 <%@ include file="/html/utils/includes/requirejs.jspf" %>
 <div class="dialogs">
-	<div id="searchObligationElementsDialog" data-title="<liferay-ui:message key="import.obligation.element" />" class="modal fade" tabindex="-1" role="dialog">
-		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
-		    <div class="modal-content">
-			<div class="modal-body container">
-
-                    <form>
-                        <div class="row form-group" style="display:none;">
+    <div id="searchObligationElementsDialog" data-title="<liferay-ui:message key="import.obligation.element" />" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-body container">
+            <form>
+            <div class="row form-group" style="display:none;">
                             <div class="col">
                                 <input type="text" name="searchobligationelement" id="searchobligationelement" placeholder="<liferay-ui:message key="enter.search.text" />" class="form-control"/>
                             </div>
@@ -48,8 +47,8 @@
                             <table id="obligationElementSearchResultstable" class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th ></th>
-                                        <th ><liferay-ui:message key="language.element" /></th>
+                                        <th></th>
+                                        <th><liferay-ui:message key="language.element" /></th>
                                         <th><liferay-ui:message key="action" /></th>
                                         <th><liferay-ui:message key="object" /></th>
                                     </tr>
