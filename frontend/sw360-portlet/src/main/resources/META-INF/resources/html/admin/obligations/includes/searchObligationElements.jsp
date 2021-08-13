@@ -28,7 +28,7 @@
       <div class="modal-content">
         <div class="modal-body container">
             <form>
-            <div class="row form-group" style="display:none;">
+            <div class="row form-group">
                             <div class="col">
                                 <input type="text" name="searchobligationelement" id="searchobligationelement" placeholder="<liferay-ui:message key="enter.search.text" />" class="form-control"/>
                             </div>
@@ -60,7 +60,7 @@
                     </form>
 				</div>
 			    <div class="modal-footer">
-		        <button type="button" class="btn btn-light" data-dismiss="modal"><liferay-ui:message key="close" /></button>
+		            <button type="button" class="btn btn-light" id="namnp" data-dismiss="modal"><liferay-ui:message key="close" /></button>
 			        <button id="importObligationElementsButton" type="button" class="btn btn-primary" title="<liferay-ui:message key="import.obligation.element" />"><liferay-ui:message key="import.obligation.element" /></button>
 			    </div>
 			</div>

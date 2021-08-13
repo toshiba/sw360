@@ -145,8 +145,6 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 obj.parent().remove();
             },
             "import": function (obj) {
-                obj.find(".elementType").val("Obligation")
-                obj.find(".other").attr("style","display:none;")
                 showObligationElementDialog(obj)
             },
         };
@@ -357,6 +355,11 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
         })
 
         // if search func work can call func showObligationElements() after click #searchbuttonobligation
+
+        $('#searchbuttonobligation').on('click', function() {
+            showObligationElements();
+        });
+
         function showObligationElements() {
             obligationElementContentFromAjax('<%=PortalConstants.OBLIGATION_ELEMENT_SEARCH%>', $('#searchobligationelement').val(), function(data) {
                     if ($dataTable) {
@@ -369,12 +372,6 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
 
         $('#obligationElementSearchResultstable').on('change', 'input', function() {
             $dialog.enablePrimaryButtons($('#obligationElementSearchResultstable input:checked').length > 0);
-        });
-
-        $('#copyToClipboard').on('click', function(event) {
-            let textSelector = "table tr td#documentId",
-            textToCopy = $(textSelector).clone().children().remove().end().text().trim();
-            clipboard.copyToClipboard(textToCopy, textSelector);
         });
 
         function obligationElementContentFromAjax(what, where, callback) {
@@ -411,9 +408,10 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 language: {
                     emptyTable: "<liferay-ui:message key="no.obligation.element.found" />",
                     processing: "<liferay-ui:message key="processing" />",
-                    loadingRecords: "<liferay-ui:message key="loading" />"
+                    loadingRecords: "<liferay-ui:message key="loading" />",
+                    emptyTable: "<liferay-ui:message key="please.perform.a.new.search" />"
                 },
-                select: 'multi+shift'
+                select: 'single'
             }, undefined, [0]);
             datatables.enableCheckboxForSelection($dataTable, 0);
         }
@@ -432,12 +430,14 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                     obligationElement.push($("input[type='radio'].form-check-input:checked").attr("lang"));
                     obligationElement.push($("input[type='radio'].form-check-input:checked").attr("action"));
                     obligationElement.push($("input[type='radio'].form-check-input:checked").attr("object"));
+
+                    obj.first().children(".elementType").val("Obligation")
+                    obj.first().children(".other").attr("style","display:none;")
+                    obj.first().children(".obLangElement").attr("style","").val(obligationElement[0])
+                    obj.first().children(".obAction").attr("style","").val(obligationElement[1])
+                    obj.first().children(".obObject").attr("style","").val(obligationElement[2])
                 }
-                // return obligation will be imported
-                console.log(obligationElement)
-                obj.find(".obLangElement").attr("style","").val(obligationElement[0])
-                obj.find(".obAction").attr("style","").val(obligationElement[1])
-                obj.find(".obObject").attr("style","").val(obligationElement[2])
+                updatePreview();
                 callback(true);
             }, function() {
                 this.$.find('.spinner').hide();
@@ -445,7 +445,6 @@ require(['jquery', 'modules/dialog', 'bridges/datatables', 'utils/keyboard', 'ut
                 this.$.find('#searchobligationelement').val('');
                 this.enablePrimaryButtons(false);
             });
-            showObligationElements();
         }
     });
 });
