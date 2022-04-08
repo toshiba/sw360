@@ -41,7 +41,6 @@ public class SpdxBOMImporterTest {
     @Before
     public void before() throws Exception {
         spdxBOMImporter = new SpdxBOMImporter(spdxBOMImporterSink);
-
         inputStream = getClass()
              .getClassLoader().getResourceAsStream("bom.spdx.rdf");
 
@@ -57,6 +56,13 @@ public class SpdxBOMImporterTest {
             Component component = i.getArgument(0);
             return new SpdxBOMImporterSink.Response(component.getName());
         });
+        when(spdxBOMImporterSink.searchComponent(eq("Browser"))).thenReturn(new Component());
+        when(spdxBOMImporterSink.searchComponent(eq("Buffer"))).thenReturn(new Component());
+        when(spdxBOMImporterSink.searchComponent(eq("CompressionEng"))).thenReturn(new Component());
+
+        when(spdxBOMImporterSink.searchRelease(eq("Browser"))).thenReturn(new Release());
+        when(spdxBOMImporterSink.searchRelease(eq("Buffer"))).thenReturn(new Release());
+        when(spdxBOMImporterSink.searchRelease(eq("CompressionEng"))).thenReturn(new Release());
 
         attachmentContent = new AttachmentContent();
         attachmentContent.setFilename("attchmentContentFilename.rdf");

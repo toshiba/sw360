@@ -44,6 +44,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.spdx.SpdxBOMImporter;
 import org.eclipse.sw360.spdx.SpdxBOMImporterSink;
+import org.spdx.library.InvalidSPDXAnalysisException;
+import java.io.File;
 
 import java.io.IOException;
 import java.io.InputStream;
