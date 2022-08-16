@@ -1445,7 +1445,7 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
         relUsageRepository.update(usedReleaseRelations);
     }
 
-    public RequestSummary importBomFromAttachmentContent(User user, String attachmentContentId) throws SW360Exception {
+    public RequestSummary importBomFromAttachmentContent(User user, String attachmentContentId) throws SW360Exception, TException {
         final AttachmentContent attachmentContent = attachmentConnector.getAttachmentContent(attachmentContentId);
         final Duration timeout = Duration.durationOf(30, TimeUnit.SECONDS);
         try {
@@ -1453,7 +1453,7 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
             try (final InputStream inputStream = attachmentStreamConnector.unsafeGetAttachmentStream(attachmentContent)) {
                 final SpdxBOMImporterSink spdxBOMImporterSink = new SpdxBOMImporterSink(user, this, componentDatabaseHandler);
                 final SpdxBOMImporter spdxBOMImporter = new SpdxBOMImporter(spdxBOMImporterSink);
-                return spdxBOMImporter.importSpdxBOMAsProject(inputStream, attachmentContent);
+                return spdxBOMImporter.importSpdxBOMAsProject(inputStream, attachmentContent, user);
             }
         } catch (InvalidSPDXAnalysisException | IOException e) {
             throw new SW360Exception(e.getMessage());
@@ -2024,4 +2024,53 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
         return projects;
     }
 
+    /**
+     * Get trees network from list releases
+     *
+     * @param releases list of releases
+     * @param user user
+     * @return list of ReleaseLinkJSON
+     */
+    public List<ReleaseLinkJSON> getTreesNetworkFromReleases(List<Release> releases, User user){
+        List<ReleaseLinkJSON> releaseLinkJSONS = new ArrayList<>();
+        releases.forEach(
+                release -> releaseLinkJSONS.add(createReleaseLinkJSONS(new ReleaseLinkJSON(release.getId()), user)));
+        return releaseLinkJSONS;
+    }
+
+    /**
+     *
+     * Build trees multiples node of release link JSON
+     *
+     * @param releaseLinkJSON node of release link
+     * @param user user
+     * @return trees release relation networks
+     */
+    public ReleaseLinkJSON createReleaseLinkJSONS(ReleaseLinkJSON releaseLinkJSON, User user) {
+        ComponentService.Iface client = new ThriftClients().makeComponentClient();
+        Release releaseById;
+        try {
+            releaseById = client.getAccessibleReleaseById(releaseLinkJSON.getReleaseId(), user);
+            List<Release> releaseList = client.getReleasesById(releaseById.getReleaseIdToRelationship().keySet().stream().collect(Collectors.toSet()), user);
+            List<ReleaseLinkJSON> linkedReleasesJSON = new ArrayList<>();
+            releaseLinkJSON.setMainlineState(MainlineState.OPEN.toString());
+            releaseLinkJSON.setReleaseRelationship(ReleaseRelationship.CONTAINED.toString());
+            releaseLinkJSON.setComment("");
+            releaseLinkJSON.setCreateOn(SW360Utils.getCreatedOn());
+            releaseLinkJSON.setCreateBy(user.getEmail());
+            for (Release release : releaseList) {
+                ReleaseLinkJSON linkJSON = new ReleaseLinkJSON(release.getId());
+                linkJSON.setMainlineState(MainlineState.OPEN.toString());
+                linkJSON.setReleaseRelationship(ReleaseRelationship.CONTAINED.toString());
+                linkJSON.setComment("");
+                linkJSON.setCreateOn(SW360Utils.getCreatedOn());
+                linkJSON.setCreateBy(user.getEmail());
+                linkedReleasesJSON.add(createReleaseLinkJSONS(linkJSON, user));
+            }
+            releaseLinkJSON.setReleaseLink(linkedReleasesJSON);
+        } catch (TException e) {
+            throw new RuntimeException(e);
+        }
+        return releaseLinkJSON;
+    }
 }

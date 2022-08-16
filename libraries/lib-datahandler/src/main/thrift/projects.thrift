@@ -632,4 +632,10 @@ service ProjectService {
     */
     list<Project> fillClearingStateSummaryForNetwork(1: list<Project> projects, 2: User user);
 
+    /**
+     * get tree network from list releases
+     * with each release, find release relation network
+     * use for import spdx in project
+     */
+    list<ReleaseLinkJSON> getTreesNetworkFromReleases(1: list<Release> releases, 2: User user);
 }

@@ -21,7 +21,9 @@ import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.RequestSummary;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseClearingStatusData;
+import org.eclipse.sw360.datahandler.thrift.components.ReleaseLinkJSON;
 import org.eclipse.sw360.datahandler.thrift.projects.ClearingRequest;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectProjectRelationship;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
@@ -471,5 +473,8 @@ public class ProjectHandler implements ProjectService.Iface {
         assertUser(user);
         return handler.fillClearingStateSummaryForNetwork(projects, user);
     }
-
+    @Override
+    public List<ReleaseLinkJSON> getTreesNetworkFromReleases(List<Release> releases, User user){
+        return handler.getTreesNetworkFromReleases(releases, user);
+    }
 }
