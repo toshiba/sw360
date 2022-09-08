@@ -35,7 +35,7 @@
 <%@include file="/html/utils/includes/logError.jspf" %>
 
 <core_rt:if test="${empty attributeNotFoundException}">
-    <core_rt:set var="isObligationPresent" value="${not empty project.releaseIdToUsage}" />
+    <core_rt:set var="isObligationPresent" value="${isObligationPresent}" />
     <core_rt:set var="inProjectDetailsContext" value="true" scope="request"/>
     <%@include file="/html/projects/includes/detailOverview.jspf"%>
 </core_rt:if>

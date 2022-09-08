@@ -58,10 +58,10 @@ public class ProjectHandlerTest {
     public void setUp() throws Exception {
         List<Project> projects = new ArrayList<>();
 
-        projects.add(new Project().setId("P1").setName("Project1").setBusinessUnit("AB CD EF").setCreatedBy("user1").setReleaseIdToUsage(Collections.emptyMap()));
-        projects.add(new Project().setId("P2").setName("Project2").setBusinessUnit("AB CD FE").setCreatedBy("user2").setReleaseIdToUsage(Collections.emptyMap()));
+        projects.add(new Project().setId("P1").setName("Project1").setBusinessUnit("AB CD EF").setCreatedBy("user1").setReleaseRelationNetwork("[]"));
+        projects.add(new Project().setId("P2").setName("Project2").setBusinessUnit("AB CD FE").setCreatedBy("user2").setReleaseRelationNetwork("[]"));
         projects.get(1).addToContributors("user1");
-        projects.add(new Project().setId("P3").setName("Project3").setBusinessUnit("AB CD EF").setCreatedBy("user3").setReleaseIdToUsage(Collections.emptyMap()));
+        projects.add(new Project().setId("P3").setName("Project3").setBusinessUnit("AB CD EF").setCreatedBy("user3").setReleaseRelationNetwork("[]"));
 
         // Create the database
         TestUtils.createDatabase(DatabaseSettingsTest.getConfiguredClient(), dbName);
@@ -223,7 +223,7 @@ public class ProjectHandlerTest {
         ProjectModerator moderator = Mockito.mock(ProjectModerator.class);
 
         ProjectDatabaseHandler handler = new ProjectDatabaseHandler(DatabaseSettingsTest.getConfiguredClient(), dbName, changeLogDbName, attachmentDbName, moderator,
-                new ComponentDatabaseHandler(DatabaseSettingsTest.getConfiguredClient(), dbName, attachmentDbName),
+                new ComponentDatabaseHandler(DatabaseSettingsTest.getConfiguredHttpClient(), DatabaseSettingsTest.getConfiguredClient(), dbName, attachmentDbName),
                 new AttachmentDatabaseHandler(DatabaseSettingsTest.getConfiguredClient(), dbName, attachmentDbName));
         Project project2 = handler.getProjectById("P2", user1);
         project2.setName("Project2new");

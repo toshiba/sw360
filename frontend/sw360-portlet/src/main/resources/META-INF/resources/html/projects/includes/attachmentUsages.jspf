@@ -29,7 +29,7 @@
     <table class="table table-bordered" id="AttachmentUsagesInfo" style="table-layout: auto"
     data-load-node-url="<%=loadAttachmentUsagesRowsURL%>"
     data-portlet-namespace="<portlet:namespace/>"
-    data-parent-branch-key="<%=PortalConstants.PARENT_BRANCH_ID%>"
+    data-parent-branch-key="<%=PortalConstants.NETWORK_PARENT_BRANCH_ID%>"
     data-scope-group-id="${httpServletRequest.getAttribute('scopeGroupId')}"
         >
         <thead>
