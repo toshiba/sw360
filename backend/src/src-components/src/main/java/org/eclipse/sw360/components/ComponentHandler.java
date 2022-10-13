@@ -519,6 +519,13 @@ public class ComponentHandler implements ComponentService.Iface {
     }
 
     @Override
+    public RequestSummary exportSPDX(User user, String releaseId, String outputFormat) throws TException {
+        assertNotNull(releaseId);
+        assertUser(user);
+        return handler.exportSPDX(user, releaseId, outputFormat);
+    }
+
+    @Override
     public RequestStatus unsubscribeRelease(String id, User user) throws TException {
         assertUser(user);
         assertId(id);

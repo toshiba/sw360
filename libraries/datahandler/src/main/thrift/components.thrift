@@ -853,4 +853,6 @@ service ComponentService {
     * Send email to the user once spreadsheet export completed
     */
     void sendExportSpreadsheetSuccessMail(1: string url, 2: string userEmail);
+
+    RequestSummary exportSPDX(1: User user, 2:string releaseId, 3:string outputFormat);
 }
