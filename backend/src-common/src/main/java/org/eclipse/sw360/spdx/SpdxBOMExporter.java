@@ -49,11 +49,14 @@ public class SpdxBOMExporter {
     }
 
     public RequestSummary exportSPDXFile(String releaseId, String outputFormat) throws SW360Exception, MalformedURLException {
+        log.info("111111111111111111111111111");
+
         RequestSummary requestSummary = new RequestSummary();
         final String targetFileName = releaseId + "." + outputFormat.toLowerCase();
         log.info("Export to file: " + targetFileName);
 
         if (createSPDXJsonFomatFromSW360SPDX(releaseId)) {
+            log.info("111111111111111111111111111");
             List<String> message = new ArrayList<>();
             if (outputFormat.equals("JSON")) {
                 try {
@@ -65,6 +68,7 @@ public class SpdxBOMExporter {
                 requestSummary.setMessage("Export to JSON format successfully !\n" + message);
                 return requestSummary.setRequestStatus(RequestStatus.SUCCESS);
             } else {
+                log.info("111111111111111111111111111");
                 String convertResult = convertJSONtoOutputFormat(releaseId + ".json", targetFileName);
                 if (convertResult.isEmpty()) {
                     log.info("Export to " + targetFileName + " successfully");
@@ -138,8 +142,12 @@ public class SpdxBOMExporter {
             // put package infomation to SPDX json
             JSONArray SPDXPackageInfo = new JSONArray();
             JSONArray SDPXRelationships = (JSONArray) parser.parse(objectMapper.writeValueAsString(sw360SPDXDocument.getRelationships()));
+            String SPDXID="";
             for (PackageInformation sw360PackageInfo : sw360PackageInformations) {
                 log.info("Export Package Infomation: " + sw360PackageInfo.getName());
+                log.info("----SPDXID-------"+sw360PackageInfo.toString());
+                SPDXID = sw360PackageInfo.getSPDXID();
+                log.info("----SPDXID-------"+SPDXID);
                 JSONObject SW360SPDXPackageInfo = (JSONObject) parser.parse(objectMapper.writeValueAsString(sw360PackageInfo));
 
                 if (sw360PackageInfo.getPackageVerificationCode() != null) {
@@ -154,6 +162,7 @@ public class SpdxBOMExporter {
                 if (!sw360PackageInfo.getRelationships().isEmpty()) {
                     for (RelationshipsBetweenSPDXElements relationship : sw360PackageInfo.getRelationships()) {
                         JSONObject packageReleationship = (JSONObject) parser.parse(objectMapper.writeValueAsString(relationship));
+                        System.out.println("------------------"+packageReleationship.toString());
                         SDPXRelationships.add(packageReleationship);
                     }
                 }
@@ -247,8 +256,20 @@ public class SpdxBOMExporter {
                 snippet.put("ranges", ranges);
             });
             SPDXJson.put("snippets", snippets);
+            JSONArray SDPXRelationship = new JSONArray();
+            for (int i=0; i < SDPXRelationships.size(); i++) {
+                log.info("----SDPXRelationships----"+SDPXRelationships.get(i).toString());
+                org.json.JSONObject jsonObject=new org.json.JSONObject(SDPXRelationships.get(i).toString());
+                log.info("----spdxElementId-----"+ jsonObject.get("relatedSpdxElement").toString());
+                if(jsonObject.get("relatedSpdxElement").toString().equals(SPDXID))
+                    SDPXRelationship.add(jsonObject);
+            }
 
-            SPDXJson.put("relationships", SDPXRelationships);
+            for (int i = 0; i <SDPXRelationship.size() ; i++) {
+                log.info("----SDPXRelationships----"+SDPXRelationship.get(i).toString());
+            }
+
+            SPDXJson.put("relationships", SDPXRelationship);
             SPDXJson.put("annotations", (JSONArray) parser.parse(objectMapper.writeValueAsString(sw360SPDXDocument.getAnnotations())));
             SPDXJson.put("hasExtractedLicensingInfos", (JSONArray) parser.parse(objectMapper.writeValueAsString(sw360SPDXDocument.getOtherLicensingInformationDetecteds())));
 

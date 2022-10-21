@@ -2514,6 +2514,11 @@ public class ComponentDatabaseHandler extends AttachmentAwareDatabaseHandler {
         RequestSummary requestSummary = new RequestSummary();
         SpdxBOMExporterSink spdxBOMExporterSink;
         try {
+            log.info("-----12321-----");
+            log.info("-----12321-----");
+            log.info("-----12321-----");
+            log.info("-----12321-----");
+            
             spdxBOMExporterSink = new SpdxBOMExporterSink(user, null, this);
             final SpdxBOMExporter spdxBOMExporter = new SpdxBOMExporter(spdxBOMExporterSink);
             return spdxBOMExporter.exportSPDXFile(releaseId, outputFormat);
