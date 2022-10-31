@@ -21,9 +21,6 @@ import org.eclipse.sw360.datahandler.thrift.spdx.spdxdocument.SPDXDocument;
 import org.eclipse.sw360.datahandler.thrift.spdx.spdxpackageinfo.*;
 import org.spdx.tools.SpdxConverter;
 import org.spdx.tools.SpdxConverterException;
-import org.spdx.tools.SpdxToolsHelper;
-import org.spdx.tools.SpdxVerificationException;
-import org.spdx.tools.Verify;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -56,36 +53,13 @@ public class SpdxBOMExporter {
         if (createSPDXJsonFomatFromSW360SPDX(releaseId)) {
             List<String> message = new ArrayList<>();
             if (outputFormat.equals("JSON")) {
-                try {
-                    message = Verify.verify(targetFileName, SpdxToolsHelper.SerFileType.JSON);
-                } catch (SpdxVerificationException e) {
-                    message = Collections.emptyList();
-                    e.printStackTrace();
-                }
                 requestSummary.setMessage("Export to JSON format successfully !\n" + message);
                 return requestSummary.setRequestStatus(RequestStatus.SUCCESS);
             } else {
                 String convertResult = convertJSONtoOutputFormat(releaseId + ".json", targetFileName);
                 if (convertResult.isEmpty()) {
                     log.info("Export to " + targetFileName + " successfully");
-                    try {
-                        if (outputFormat.equals("SPDX")) {
-                            message = Verify.verify(targetFileName, SpdxToolsHelper.SerFileType.valueOf("TAG"));
-                        }else if (outputFormat.equals("RDF")) {
-                            message = Verify.verify(targetFileName, SpdxToolsHelper.SerFileType.valueOf(outputFormat + "XML"));
-                        } else {
-                            message = Verify.verify(targetFileName, SpdxToolsHelper.SerFileType.valueOf(outputFormat));
-                        }
-                    } catch (SpdxVerificationException e) {
-                        message = Collections.emptyList();
-                        e.printStackTrace();
-                    }
-
-                    if (message.isEmpty()) {
-                        requestSummary.setMessage("Export to " + outputFormat + " format successfully !" );
-                    } else {
-                        requestSummary.setMessage("Export to " + outputFormat + " format successfully !\n" + message);
-                    }
+                    requestSummary.setMessage("Export to " + outputFormat + " format successfully !" );
                     return requestSummary.setRequestStatus(RequestStatus.SUCCESS);
                 } else {
                     log.error("Export to " + targetFileName + " error");
