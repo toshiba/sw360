@@ -152,6 +152,7 @@
                                         </tbody>
                                     </table>
                                     <button type="button" class="btn btn-secondary mt-3" onclick="window.location.href='<%=addReleaseURL%>'"><liferay-ui:message key="add.releases" /></button>
+                                    <button type="button" class="btn btn-secondary mt-3" id="import-spdx-bom" data-component-name="${component.name}" data-action="import-spdx-bom"><liferay-ui:message key="import.spdx.bom" /></button>
                                     <%@include file="/html/utils/includes/importBomForComponent.jspf" %>
                                 </div>
                                 <core_rt:if test="${not componentDivAddMode}" >
