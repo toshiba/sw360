@@ -276,7 +276,7 @@
                             <input class="spdx-radio" id="licenseConcludedExist" type="radio"
                                 name="_sw360_portlet_components_LICENSE_CONCLUDED" value="EXIST">
                             <input style="flex: 6; margin-right: 1rem;" class="form-control needs-validation"
-                                rule="required" id="licenseConcludedValue" type="text"
+                                id="licenseConcludedValue" type="text"
                                 name="_sw360_portlet_components_LICENSE_CONCLUDED_VALUE"
                                 placeholder="Enter concluded license">
                         </div>
@@ -289,11 +289,6 @@
                                 name="_sw360_portlet_components_LICENSE_CONCLUDED" value="NOASSERTION">
                             <label class="form-check-label radio-label"
                                 for="licenseConcludedNoAssertion">NOASSERTION</label>
-                        </div>
-                    </div>
-                    <div id="licenseConcludedValue-error-messages">
-                        <div class="invalid-feedback" rule="required">
-                            <liferay-ui:message key="this.field.must.be.not.empty" />
                         </div>
                     </div>
                 </div>
@@ -491,6 +486,66 @@
                     <textarea class="form-control" id="spdxPackageAttributionText" rows="5"
                         name="_sw360_portlet_components_PACKAGE_COMMENT"
                         placeholder="Enter package attribution text"><sw360:out value="${package.attributionText.toString()}" stripNewlines="false" hashSet="true"/></textarea>
+                </div>
+            </td>
+        </tr>
+        <tr class="spdx-full">
+            <td>
+                <div class="form-group">
+                    <label for="primaryPackagePurpose">7.24 Primary Package Purpose</label>
+                    <textarea class="form-control" id="primaryPackagePurpose" rows="5" name="_sw360_portlet_components_PRIMARY_PACKAGE_PURPOSE"
+                        placeholder="Enter primary package purpose">${package.primaryPackagePurpose}</textarea>
+                </div>
+            </td>
+        </tr>
+        <tr class="spdx-full">
+            <td style="display: flex; flex-direction: column;">
+                <div class="form-group">
+                    <label for="createdDate">7.25 Release Date</label>
+                    <div style="display: flex; flex-direction: row; margin-bottom: 0.75rem;">
+                        <div>
+                            <input id="createdReleaseDate" type="date" class="form-control spdx-date needs-validation"
+                                placeholder="created.date.yyyy.mm.dd">
+                        </div>
+                        <div>
+                            <input id="createdReleaseTime" type="time" step="1" class="form-control spdx-time needs-validation"
+                               placeholder="created.time.hh.mm.ss">
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr class="spdx-full">
+            <td style="display: flex; flex-direction: column;">
+                <div class="form-group">
+                    <label for="createdDate">7.26 Built Date</label>
+                    <div style="display: flex; flex-direction: row; margin-bottom: 0.75rem;">
+                        <div>
+                            <input id="createdBuiltDate" type="date" class="form-control spdx-date needs-validation"
+                                placeholder="created.date.yyyy.mm.dd">
+                        </div>
+                        <div>
+                            <input id="createdBuiltTime" type="time" step="1" class="form-control spdx-time needs-validation"
+                               placeholder="created.time.hh.mm.ss">
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr class="spdx-full">
+            <td style="display: flex; flex-direction: column;">
+                <div class="form-group">
+                    <label for="createdDate">7.27 Valid Until Date</label>
+                    <div style="display: flex; flex-direction: row; margin-bottom: 0.75rem;">
+                        <div>
+                            <input id="createdValidUntilDate" type="date" class="form-control spdx-date needs-validation"
+                                placeholder="created.date.yyyy.mm.dd">
+                        </div>
+                        <div>
+                            <input id="createdValidUntilTime" type="time" step="1" class="form-control spdx-time needs-validation"
+                               placeholder="created.time.hh.mm.ss">
+                        </div>
+                    </div>
                 </div>
             </td>
         </tr>

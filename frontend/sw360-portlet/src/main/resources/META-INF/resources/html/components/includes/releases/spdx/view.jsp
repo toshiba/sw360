@@ -148,9 +148,9 @@
 		</tr>
 	</tbody>
 </table>
-<!-- <core_rt:if test="${not empty spdxPackageInfo}">
+ <core_rt:if test="${not empty spdxPackageInfo}">
 	<core_rt:set var="package" value="${spdxPackageInfo.iterator().next()}" />
-</core_rt:if> -->
+</core_rt:if>
 <table class="table label-value-table spdx-table" id="PackageInformation">
 	<thead class="spdx-thead">
 		<tr>
@@ -164,7 +164,6 @@
                      <select id="packageInfoSelect" class="spdx-col-2" onchange="changePackageIndex(this)"></select>
 			</td>
 		</tr>
-
 		<core_rt:forEach items="${spdxPackageInfo}" var="package" varStatus="loop">
 			<tr data-index="${package.index}">
 				<td class="spdx-flex-row">
@@ -400,6 +399,38 @@
 						<core_rt:forEach items="${package.attributionText}" var="attributionTextData" varStatus="loop">
 							<sw360:out value="${attributionTextData}"/><br>
 						</core_rt:forEach>
+					</p>
+				</td>
+			</tr>
+			<tr class="spdx-full" data-index="${package.index}">
+				<td class="spdx-flex-row">
+					<div class="spdx-col-1">7.24 Primary Package Purpose </div>
+					<div class="spdx-col-2 " id="primaryPackagePurpose">
+						<sw360:out value="${package.primaryPackagePurpose}" />
+					</div>
+				</td>
+			</tr>
+            <tr class="spdx-full" data-index="${package.index}">
+                <td class="spdx-flex-row">
+                    <div class="spdx-col-1">7.25 Release Date</div>
+                    <p class="spdx-col-2 " id="release-date-${loop.count}">
+                        <sw360:out value="${package.releaseDate}" />
+                    </p>
+                </td>
+            </tr>
+			<tr class="spdx-full" data-index="${package.index}">
+				<td class="spdx-flex-row">
+					<div class="spdx-col-1">7.26 Built Date</div>
+					<p class="spdx-col-2 " id="built-date-${loop.count}">
+						<sw360:out value="${package.builtDate}" />
+					</p>
+				</td>
+			</tr>
+			<tr class="spdx-full" data-index="${package.index}">
+				<td class="spdx-flex-row">
+					<div class="spdx-col-1">7.27 Valid Until Date</div>
+					<p class="spdx-col-2 " id="validUntil-date-${loop.count}">
+						<sw360:out value="${package.validUntilDate}" />
 					</p>
 				</td>
 			</tr>
@@ -924,6 +955,7 @@
 		fillArray('#documentComment', documentCreationInformationObj.documentComment.split('\n'));
 
 		fillArray('#sourceInfo', packageInformationObj.sourceInfo.split('\n'));
+		fillArray('#primaryPackagePurpose', packageInformationObj.primaryPackagePurpose.split('\n'));
 		fillArray('#licenseComments', packageInformationObj.licenseComments.split('\n'));
 		fillArray('#copyrightText', packageInformationObj.copyrightText.split('\n'));
 		fillArray('#summary', packageInformationObj.summary.split('\n'));
@@ -1120,6 +1152,16 @@
 	<core_rt:forEach items="${documentAnnotations}" var="documentAnnotationData" varStatus="loop">
 		displayDateTime('annotation-document-date-${loop.count}', '${documentAnnotationData.annotationDate}');
 	</core_rt:forEach>
+	<core_rt:forEach items="${spdxPackageInfo}" var="package" varStatus="loop">
+		displayDateTime('release-date-${loop.count}', '${package.releaseDate}');
+	</core_rt:forEach>
+    <core_rt:forEach items="${spdxPackageInfo}" var="package" varStatus="loop">
+       displayDateTime('built-date-${loop.count}', '${package.builtDate}');
+    </core_rt:forEach>
+    <core_rt:forEach items="${spdxPackageInfo}" var="package" varStatus="loop">
+        displayDateTime('validUntil-date-${loop.count}', '${package.validUntilDate}');
+    </core_rt:forEach>
+
 
 	displayDateTime('createdDateTime', "${spdxDocumentCreationInfo.created}");
 

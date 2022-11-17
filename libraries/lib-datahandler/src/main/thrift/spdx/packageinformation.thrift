@@ -57,6 +57,10 @@ struct PackageInformation {
     25: optional set<ExternalReference> externalRefs,   //7.21
     26: optional set<string> attributionText,   // 7.22
     27: optional set<Annotation> annotations,   // 7.23
+    35: optional string primaryPackagePurpose,  // 7.24
+    36: optional string releaseDate,            // 7.25
+    37: optional string builtDate,              // 7.26
+    38: optional string validUntilDate,         // 7.27
     // Information for ModerationRequests
     30: optional DocumentState documentState,
     31: optional map<RequestedAction, bool> permissions,
