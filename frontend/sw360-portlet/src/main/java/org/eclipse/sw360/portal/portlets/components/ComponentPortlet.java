@@ -1108,6 +1108,7 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                     setPackage.add(packageInfoJson);
                     packageArray.put(packageInfoJson);
                 }
+                log.info("-----packageInfoJson--------"+setPackage.toString());
                 request.setAttribute("packageInfoJson", setPackage);
             } catch (JsonProcessingException e) {
                 log.error("Error when write Value As String PackageInformation ",e);

@@ -175,6 +175,7 @@ public abstract class SpdxPortlet {
             spdxDocumentData = (String) request.getAttribute(SPDXDocument._Fields.TYPE.toString());
             documentCreationInfoData = (String) request.getAttribute(SPDXDocument._Fields.SPDX_DOCUMENT_CREATION_INFO_ID.toString());
             packageInfoData = (String) request.getAttribute(SPDXDocument._Fields.SPDX_PACKAGE_INFO_IDS.toString());
+            log.info("-------packageInfoData-----------"+packageInfoData.toString());
         } else {
             spdxDocumentData = request.getParameter(SPDXDocument._Fields.TYPE.toString());
             documentCreationInfoData = request.getParameter(SPDXDocument._Fields.SPDX_DOCUMENT_CREATION_INFO_ID.toString());

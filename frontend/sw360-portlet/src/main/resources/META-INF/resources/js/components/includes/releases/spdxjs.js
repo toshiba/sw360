@@ -569,6 +569,7 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
         $('#versionInfo').val(packageInformationObj['versionInfo']);
         $('#packageFileName').val(packageInformationObj['packageFileName']);
         $('#sourceInfo').val(packageInformationObj['sourceInfo']);
+        $('#primaryPackagePurpose').val(packageInformationObj['primaryPackagePurpose']);
         $('#licenseComments').val(packageInformationObj['licenseComments']);
         $('#summary').val(packageInformationObj['summary']);
         $('#description').val(packageInformationObj['description']);
@@ -664,6 +665,9 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
 
         fillArray('#spdxPackageAttributionText', packageInformationObj.attributionText);
 
+        fillDateTime('#createdReleaseDate', '#createdReleaseTime', packageInformationObj['releaseDate']);
+        fillDateTime('#createdBuiltDate', '#createdBuiltTime', packageInformationObj['builtDate']);
+        fillDateTime('#createdValidUntilDate', '#createdValidUntilTime', packageInformationObj['validUntilDate']);
     }
 
 
@@ -718,6 +722,8 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
 
         packageInformationObj['sourceInfo'] = $('#sourceInfo').val().trim();
 
+        packageInformationObj['primaryPackagePurpose'] = $('#primaryPackagePurpose').val().trim();
+
         packageInformationObj['licenseConcluded'] = readMultiOptionField('#licenseConcludedValue');
 
         if (packageInformationObj['filesAnalyzed'] == 'true') {
@@ -739,6 +745,13 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
         packageInformationObj['packageComment'] = $('#spdxPackageComment').val().trim();
 
         packageInformationObj['attributionText'] = readMultiOptionField('#spdxPackageAttributionText', 'array');
+
+        packageInformationObj['releaseDate'] = readDateTime('#createdReleaseDate', '#createdReleaseTime');
+
+        packageInformationObj['builtDate'] = readDateTime('#createdBuiltDate', '#createdBuiltTime');
+
+        packageInformationObj['validUntilDate'] = readDateTime('#createdValidUntilDate', '#createdValidUntilTime');
+        
     }
 
     // --------------------------------- External Reference ---------------------------------

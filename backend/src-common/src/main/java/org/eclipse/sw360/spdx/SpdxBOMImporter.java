@@ -29,6 +29,7 @@ import org.eclipse.sw360.datahandler.thrift.spdx.relationshipsbetweenspdxelement
 import org.eclipse.sw360.datahandler.thrift.spdx.snippetinformation.*;
 import org.eclipse.sw360.datahandler.thrift.spdx.spdxdocument.*;
 import org.eclipse.sw360.datahandler.thrift.spdx.spdxpackageinfo.*;
+import org.spdx.library.model.enumerations.Purpose;
 import org.spdx.library.model.enumerations.RelationshipType;
 import org.spdx.library.model.license.ExtractedLicenseInfo;
 import org.spdx.library.model.license.SpdxNoAssertionLicense;
@@ -573,6 +574,10 @@ public class SpdxBOMImporter {
             final boolean fileAnalyzed = spdxPackage.isFilesAnalyzed();
             final String homepage = getValue(spdxPackage.getHomepage());
             final String sourceInfo = getValue(spdxPackage.getSourceInfo());
+            final String  primaryPackagePurpose =getValuePrimaryPurpose(spdxPackage.getPrimaryPurpose());
+            final String  releaseDate = getValue(spdxPackage.getReleaseDate());
+            final String  builtDate =getValue(spdxPackage.getBuiltDate());
+            final String  validUntilDate =getValue(spdxPackage.getValidUntilDate());
 
 
             String licenseConcluded="";
@@ -602,6 +607,10 @@ public class SpdxBOMImporter {
                     .setChecksums(checksums)
                     .setHomepage(verifyOrSetDefault(homepage))
                     .setSourceInfo(verifyOrSetDefault(sourceInfo))
+                    .setPrimaryPackagePurpose(verifyOrSetDefault(primaryPackagePurpose))
+                    .setReleaseDate(verifyOrSetDefault(releaseDate))
+                    .setBuiltDate(verifyOrSetDefault(builtDate))
+                    .setValidUntilDate(verifyOrSetDefault(validUntilDate))
                     .setLicenseConcluded(verifyOrSetDefault(licenseConcluded))
                     .setLicenseInfoFromFiles(licenseInfosFromFiles)
                     .setLicenseDeclared(verifyOrSetDefault(licenseDeclared))
@@ -618,6 +627,14 @@ public class SpdxBOMImporter {
         }
 
         return pInfo;
+    }
+
+    private String getValuePrimaryPurpose(Optional<Purpose> primaryPurpose) {
+        if (primaryPurpose.isPresent()) {
+            return primaryPurpose.get().toString();
+        } else {
+            return "";
+        }
     }
 
     private PackageVerificationCode createPVCFromSpdxPackage(SpdxPackage spdxPackage) {
