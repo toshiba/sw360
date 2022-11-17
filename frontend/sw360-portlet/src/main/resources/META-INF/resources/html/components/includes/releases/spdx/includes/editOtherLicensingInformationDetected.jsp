@@ -34,11 +34,16 @@
         <tr>
             <td>
                 <div class="form-group">
-                    <label  for="licenseId">10.1 License identifier</label>
+                    <label class="mandatory" for="licenseId">10.1 License identifier</label>
                     <div style="display: flex">
                         <label class="sub-label">LicenseRef-</label>
-                        <input id="licenseId" class="form-control needs-validation"
+                        <input id="licenseId" class="form-control needs-validation" rule="required"
                             type="text" placeholder="Enter license identifier">
+                    </div>
+                    <div id="licenseId-error-messages">
+                        <div class="invalid-feedback" rule="required">
+                            <liferay-ui:message key="this.field.must.be.not.empty" />
+                        </div>
                     </div>
                 </div>
             </td>
@@ -46,9 +51,14 @@
         <tr>
             <td>
                 <div class="form-group">
-                    <label  for="extractedText">10.2 Extracted text</label>
-                    <textarea class="form-control needs-validation" id="extractedText" rows="5"
+                    <label class="mandatory" for="extractedText">10.2 Extracted text</label>
+                    <textarea class="form-control needs-validation" rule="required" id="extractedText" rows="5"
                         name="_sw360_portlet_components_EXTRACTED_TEXT" placeholder="Enter extracted text"></textarea>
+                </div>
+                <div id="extractedText-error-messages">
+                    <div class="invalid-feedback" rule="required">
+                        <liferay-ui:message key="this.field.must.be.not.empty" />
+                    </div>
                 </div>
             </td>
         </tr>
