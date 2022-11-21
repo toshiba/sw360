@@ -750,7 +750,6 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
         packageInformationObj['builtDate'] = readDateTime('#createdBuiltDate', '#createdBuiltTime');
 
         packageInformationObj['validUntilDate'] = readDateTime('#createdValidUntilDate', '#createdValidUntilTime');
-        
     }
 
     // --------------------------------- External Reference ---------------------------------
