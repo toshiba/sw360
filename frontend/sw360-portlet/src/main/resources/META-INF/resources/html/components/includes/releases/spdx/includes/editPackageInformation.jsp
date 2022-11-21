@@ -23,7 +23,7 @@
     </thead>
     <tbody id="sectionPackageInformation" class="section section-package">
         <tr>
-            <td style="display:none;">
+            <td >
                 <div style="display: flex; flex-direction: column; padding-left: 1rem;">
                     <div style="display: flex; flex-direction: row; margin-bottom: 0.75rem;">
                         <label for="selectPackage" style="text-decoration: underline;" class="sub-title">Select Package</label>
@@ -37,7 +37,7 @@
                 </div>
             </td>
         </tr>
- 
+
         <tr>
             <td style="display: flex">
                 <div class="form-group" style="flex: 1">
