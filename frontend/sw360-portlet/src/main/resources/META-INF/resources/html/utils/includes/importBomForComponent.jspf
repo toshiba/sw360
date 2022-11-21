@@ -194,21 +194,38 @@
                         componentName = data.name;
                         releases      = data.version;
                         actualComponentName = $('#import-spdx-bom').data().componentName;
-
+                        console.log("----componentName-------"+componentName);
+                        console.log("----actualComponentName-------"+actualComponentName);
+                        console.log("----releases-------"+releases);
                         if (actualComponentName) {
-                            if (actualComponentName === componentName) {
-                                if (!data.isReleaseDuplicate) {
-                                    statusDiv.html("<h3>The new Release will be created, do you want to import?</h3>");
-                                    statusDiv.append("<div>New Release: <b>"+ releases+"</b></div>");
-                                } else {
-                                    statusDiv.html("<h3>The Release existed, do you want:</h3>");
-                                    statusDiv.append("<div>Update Release: <b>"+ releases+"</b> (please choose Import button)</div>");
-                                    statusDiv.append("<div>Create new Release: <b>"+componentName+" ("+ releases+"-sbom-"+attachmentContentId.substring(0,6)+")</b></div>");
+                            if (componentName === "Don't have Component created!" ) {
+                                const split = releases.split(' ');
+                                const name = split[0];
+                                if (name === actualComponentName) {
+                                    if (!data.isReleaseDuplicate) {
+                                        statusDiv.html("<h3>The new Release will be created, do you want to import?</h3>");
+                                        statusDiv.append("<div>New Release: <b>"+ releases+"</b></div>");
+                                    } else {
+                                        statusDiv.html("<h3>The Release existed, do you want:</h3>");
+                                        statusDiv.append("<div>Update Release: <b>"+ releases+"</b> (please choose Import button)</div>");
+                                        statusDiv.append("<div>Create new Release: <b>"+componentName+" ("+ releases+"-sbom-"+attachmentContentId.substring(0,6)+")</b></div>");
+                                    }
                                 }
                             } else {
-                                $('#importSBOM').hide();
-                                statusDiv.html("<h3>The provided SPDX file is not a release of \""+actualComponentName+"\" component.</h3>");
-                                contentDiv.show();
+                                if (actualComponentName === componentName) {
+                                    if (!data.isReleaseDuplicate) {
+                                        statusDiv.html("<h3>The new Release will be created, do you want to import?</h3>");
+                                        statusDiv.append("<div>New Release: <b>"+ releases+"</b></div>");
+                                    } else {
+                                        statusDiv.html("<h3>The Release existed, do you want:</h3>");
+                                        statusDiv.append("<div>Update Release: <b>"+ releases+"</b> (please choose Import button)</div>");
+                                        statusDiv.append("<div>Create new Release: <b>"+componentName+" ("+ releases+"-sbom-"+attachmentContentId.substring(0,6)+")</b></div>");
+                                    }
+                                } else {
+                                    $('#importSBOM').hide();
+                                    statusDiv.html("<h3>The provided SPDX file is not a release of \""+actualComponentName+"\" component.</h3>");
+                                    contentDiv.show();
+                                }
                             }
                         } else {
                             if (!data.isComponentDuplicate) {
