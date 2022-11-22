@@ -10,6 +10,7 @@
  */
 package org.eclipse.sw360.spdx;
 
+import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.spdx.annotations.*;
@@ -115,6 +116,8 @@ public class SpdxBOMExporter {
             String SPDXID="";
             for (PackageInformation sw360PackageInfo : sw360PackageInformations) {
                 log.info("Export Package Infomation: " + sw360PackageInfo.getName());
+                if (!CommonUtils.isNotNullEmptyOrWhitespace(sw360PackageInfo.getPrimaryPackagePurpose()))
+                    sw360PackageInfo.setPrimaryPackagePurpose("SOURCE");
                 SPDXID = sw360PackageInfo.getSPDXID();
                 JSONObject SW360SPDXPackageInfo = (JSONObject) parser.parse(objectMapper.writeValueAsString(sw360PackageInfo));
                 if (sw360PackageInfo.getPackageVerificationCode() != null) {
