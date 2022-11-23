@@ -266,6 +266,10 @@
                     'checksums': [],
                     'homepage': '',
                     'sourceInfo': '',
+                    'primaryPackagePurpose':'',
+                    'releaseDate':'',
+                    'builtDate':'',
+                    'validUntilDate':'',
                     'licenseConcluded': '',
                     'licenseInfoFromFiles': [],
                     'licenseDeclared': '',
@@ -340,7 +344,7 @@
             spdxjs.fillExternalRef(packagesInformationObj[selectedPackage], selectedIndex);
         });
         // 7.21 External Reference Category
-        const referenceCategories = { 'SECURITY': ['cpe22Type', 'cpe23Type'],
+        const referenceCategories = { 'SECURITY': ['cpe22Type', 'cpe23Type','advisory','fix','url','swid'],
             'PACKAGE-MANAGER': ['maven-central', 'npm', 'nuget', 'bower', 'purl'],
             'PERSISTENT-ID': [],
             'OTHER': [] };
