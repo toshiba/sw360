@@ -762,11 +762,20 @@ define('components/includes/releases/spdxjs', ['jquery',"components/includes/rel
 
         $('#referenceCategory').change();
         $('#referenceCategory').removeAttr('disabled');
-
+        let referenceTypes = ['cpe22Type', 'cpe23Type','advisory','fix','url','swid'];
+        let cnt=0;
         if (obj['referenceCategory'] == 'SECURITY' || obj['referenceCategory'] == 'PACKAGE-MANAGER') {
-            $('#referenceType-1').val(obj['referenceType']);
-            $('#referenceType-1').removeAttr('disabled');
-
+            for (let i = 0; i < referenceTypes.length; i++) {
+                if(obj['referenceType'].includes(referenceTypes[i])){
+                    $('#referenceType-1').val(referenceTypes[i]);
+                    $('#referenceType-1').removeAttr('disabled');
+                    cnt++;
+                }
+            }
+            if (cnt == 0 ) {
+                $('#referenceType-1').val(obj['referenceType']);
+                $('#referenceType-1').removeAttr('disabled');
+            }
         } else {
             $('#referenceType-2').val(obj['referenceType']);
             $('#referenceType-2').removeAttr('disabled');
