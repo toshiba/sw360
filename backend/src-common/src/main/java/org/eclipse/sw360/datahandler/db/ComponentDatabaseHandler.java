@@ -110,6 +110,10 @@ public class ComponentDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
     private static final Map<String ,String> listReleaseName =new HashMap<>();
 
+    private static final List<String> listComponentName =new ArrayList<>();
+
+    private static final Map<String ,String> listReleaseName =new HashMap<>();
+
     /**
      * Connection to the couchDB database
      */
