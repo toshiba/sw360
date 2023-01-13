@@ -714,6 +714,7 @@ public class PortalConstants {
     public static final String CURRENT_NETWORK = "currentNetwork";
     public static final String CHECK_DIFF_DEPENDENCY_NETWORK_WITH_RELEASES_RELATIONSHIP = "checkDiffDependencyNetworkWithReleasesRelationship";
     public static final String RESTRICTED_RELEASE = "Restricted release";
+    public static final String GET_HTML_RELEASE_ROWS = "getHtmlReleaseRows";
     static {
         Properties props = CommonUtils.loadProperties(PortalConstants.class, PROPERTIES_FILE_PATH);
 

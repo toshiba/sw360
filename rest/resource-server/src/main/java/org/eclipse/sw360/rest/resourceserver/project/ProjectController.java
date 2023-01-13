@@ -1185,7 +1185,6 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
                         continue;
                     }
                     releaseWithSameLevel.add(releaseLink.getReleaseId());
-                    releaseService.getReleaseForUserById(releaseLink.getReleaseId(), sw360User);
                     String mainLineStateUpper = (releaseLink.getMainlineState() != null) ? releaseLink.getMainlineState().toUpperCase() : MainlineState.OPEN.toString();
                     String releaseRelationShipUpper = (releaseLink.getReleaseRelationship() != null) ? releaseLink.getReleaseRelationship().toUpperCase() : ReleaseRelationship.CONTAINED.toString();
 
@@ -1246,7 +1245,6 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
                 continue;
             }
             releaseIdsWithSameLevel.add(releaseLink.getReleaseId());
-            releaseService.getReleaseForUserById(releaseLink.getReleaseId(), sw360User);
 
             if (loadedReleases.contains(releaseLink.getReleaseId())) {
                 loadedReleases.add(releaseLink.getReleaseId());
@@ -1524,7 +1522,6 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
 
     public ReleaseLinkJSON checkAndUpdateNode(ReleaseLinkJSON node, ProjectOperation operation, User sw360User) throws TException {
         ReleaseLinkJSON release = new ReleaseLinkJSON();
-        releaseService.getReleaseForUserById(node.getReleaseId(), sw360User);
         String mainLineStateUpper = (node.getMainlineState() != null) ? node.getMainlineState().toUpperCase() : MainlineState.OPEN.toString();
         String releaseRelationShipUpper = (node.getReleaseRelationship() != null) ? node.getReleaseRelationship().toUpperCase() : ReleaseRelationship.CONTAINED.toString();
 

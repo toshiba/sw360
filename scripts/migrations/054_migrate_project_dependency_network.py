@@ -111,12 +111,12 @@ def run():
 # --------------------------------
 
 def writeLog():
-    logFile = open('052_migrate_project_dependency_network.log', 'w')
+    logFile = open('054_migrate_project_dependency_network.log', 'w')
     json.dump(log, logFile, indent = 4, sort_keys = True)
     logFile.close()
     print ('\n')
     print ('------------------------------------------')
-    print ('Please check log file "052_migrate_project_dependency_network.log" in this directory for details')
+    print ('Please check log file "054_migrate_project_dependency_network.log" in this directory for details')
     print ('------------------------------------------')
 
 

@@ -232,87 +232,14 @@
                         releaseWithRelations = JSON.parse(releaseWithRelations);
                     }
                 }
-                flattenRecursiveNetwork();
                 releaseWithRelationsString = JSON.stringify(releaseWithRelations);
                 $('#releaseRelationTree').val(releaseWithRelationsString);
                 displayReleaseRelationShip();
             });
 
-            function flattenRecursiveNetwork() {
-                 flattenArray = [];
-                 releaseIds = [];
-                 mainlineStates = [];
-                 releaseRelationShips = [];
-                 layers = [];
-                 indexes = [];
-                 parentIds = [];
-                 comments = [];
-
-                 for(let index = 0 ; index < releaseWithRelations.length ; index++) {
-                    releaseIds.push(releaseWithRelations[index].releaseId);
-                    mainlineStates.push(releaseWithRelations[index].mainlineState);
-                    releaseRelationShips.push(releaseWithRelations[index].releaseRelationship);
-                    if(releaseWithRelations[index].comment != null) {
-                        comments.push(releaseWithRelations[index].comment);
-                    } else {
-                        comments.push("");
-                    }
-                    layers.push(0);
-                    indexes.push(index);
-                    parentIds.push("");
-
-                    releaseWithRelations[index] = removeUnnecessaryField(releaseWithRelations[index]);
-                    let releaseRelationElement = Object.assign({},releaseWithRelations[index]);
-                    releaseRelationElement.parentId = "";
-                    releaseRelationElement.releaseLink = [];
-                    flattenArray.push(releaseRelationElement);
-
-                    let parentId = releaseWithRelations[index].releaseId;
-                    let releases = releaseWithRelations[index].releaseLink;
-                    layer = 1;
-                    recursiveNetwork(layer, parentId, releases, index);
-                 }
-            }
-
-            function recursiveNetwork(layer, parentId, releases, parentIndex){
-                 for(let index = 0 ; index < releases.length ; index++) {
-                     releaseIds.push(releases[index].releaseId);
-                     mainlineStates.push(releases[index].mainlineState);
-                     releaseRelationShips.push(releases[index].releaseRelationship);
-                     if(releases[index].comment != null) {
-                        comments.push(releases[index].comment);
-                     } else {
-                        comments.push("");
-                     }
-                     layers.push(layer);
-                     indexes.push(index);
-                     parentIds.push(parentId);
-
-                     releases[index] = removeUnnecessaryField(releases[index]);
-                     let releaseRelationElement = Object.assign({},releases[index]);
-                     releaseRelationElement.releaseLink = [];
-                     flattenArray.push(releaseRelationElement);
-                     let nextLayer = layer + 1;
-                     recursiveNetwork(nextLayer, releases[index].releaseId, releases[index].releaseLink, index);
-                 }
-            }
-
-            function removeUnnecessaryField(jsonObject) {
-                 delete jsonObject.setComment;
-                 delete jsonObject.setReleaseId;
-                 delete jsonObject.setReleaseLink;
-                 delete jsonObject.setReleaseRelationship;
-                 delete jsonObject.releaseLinkIterator;
-                 delete jsonObject.setMainlineState;
-                 delete jsonObject.releaseLinkSize;
-                 delete jsonObject.setCreateOn;
-                 delete jsonObject.setCreateBy;
-                 return jsonObject;
-            }
-
             async function displayReleaseRelationShip() {
                 $('.spinner').show();
-                let newRow = await releaseRelationFromAjax('<%=PortalConstants.CREATE_LINKED_RELEASE_ROW%>', releaseIds, parentIds, layers, mainlineStates, releaseRelationShips, indexes, comments);
+                let newRow = await getHtmlRowsFromDependencyNetwork('<%=PortalConstants.GET_HTML_RELEASE_ROWS%>');
                 newRow = newRow.replace(/\s+/g,' ').trim();
                 document.getElementById("tableBody").innerHTML = newRow;
                 $('.spinner').hide();
@@ -344,7 +271,6 @@
                 }, function(submit, callback) {
                      removeNodeFromNetwork(releaseWithRelations, i, trace);
                      $('#LinkedReleasesNetwork tbody').empty();
-                     flattenRecursiveNetwork();
                      $('#releaseRelationTree').val(JSON.stringify(releaseWithRelations));
                      displayReleaseRelationShip();
                      callback(true);
@@ -365,7 +291,8 @@
                let parentNode = $(this).closest('tr').attr('parent-node');
                let currentIndex = $(this).closest('tr').attr('data-index');
 
-               let newNode = await getLinkedReleaseOfNode('<%=PortalConstants.FIND_LINKED_RELEASE_OF_NODE%>',newSelect);
+               let stringNode = await getLinkedReleaseOfNode('<%=PortalConstants.FIND_LINKED_RELEASE_OF_NODE%>',newSelect);
+               let newNode = JSON.parse(stringNode);
                let i=0;
                let trace = [];
                trace.unshift(currentIndex);
@@ -375,9 +302,8 @@
                }
                replaceNode(releaseWithRelations, i, trace, newNode[0], newSelect, oldSelect);
                $('#LinkedReleasesNetwork tbody').empty();
-               flattenRecursiveNetwork()
-               displayReleaseRelationShip();
                $('#releaseRelationTree').val(JSON.stringify(releaseWithRelations));
+               displayReleaseRelationShip();
             }
 
             function replaceNode(releasesLinked, i, trace, newNode, newSelect, oldSelect){
@@ -1185,6 +1111,26 @@
                     $('.show-alert .alert-message').empty();
                     $('.show-alert').css('display','none');
                 }, 7000);
+            }
+
+            function getHtmlRowsFromDependencyNetwork(what){
+                return new Promise(function(resolve, reject) {
+                    jQuery.ajax({
+                        type: 'POST',
+                        url: '<%=viewReleaseURL%>',
+                        data: {
+                            '<portlet:namespace/><%=PortalConstants.WHAT%>': what,
+                            '<portlet:namespace/><%=PortalConstants.WHERE%>': JSON.stringify(releaseWithRelations)
+                        },
+                        success: function (data) {
+                            resolve(data);
+                        },
+                        error: function() {
+                            reject("");
+                            $releaseDialog.alert('<liferay-ui:message key="cannot.link.to.release" />');
+                        }
+                    });
+                });
             }
         });
     });

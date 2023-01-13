@@ -14,11 +14,13 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
 import com.google.common.collect.*;
+import com.google.gson.Gson;
 import com.liferay.portal.kernel.json.*;
 import com.liferay.portal.kernel.model.Organization;
 import com.liferay.portal.kernel.portlet.LiferayPortletURL;
@@ -1266,6 +1268,25 @@ public class ProjectPortlet extends FossologyAwarePortlet {
         } else if (PortalConstants.CHECK_DIFF_DEPENDENCY_NETWORK_WITH_RELEASES_RELATIONSHIP.equals(what)) {
             String currentNetwork = request.getParameter(PortalConstants.CURRENT_NETWORK);
             checkDiffDependencyNetworkAndReleasesRelationship(request, response, currentNetwork);
+        } else if (PortalConstants.GET_HTML_RELEASE_ROWS.equals(what)) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            String network = request.getParameter(WHERE);
+            List<String> releaseIds = new ArrayList<>();
+            List<String> parentIds = new ArrayList<>();
+            List<String> layers = new ArrayList<>();
+            List<String> mainlineStates = new ArrayList<>();
+            List<String> releaseRelationShips = new ArrayList<>();
+            List<String> indexes = new ArrayList<>();
+            List<String> comments = new ArrayList<>();
+
+            List<ReleaseLinkJSON> dependencyNetwork = objectMapper.readValue(network, new TypeReference<List<ReleaseLinkJSON>>() {
+            });
+
+            getInformationFromNetwork(dependencyNetwork, releaseIds, parentIds, layers, mainlineStates, releaseRelationShips, indexes, comments, 0, "");
+            serveNewTableRowLinkedRelease(request, response, releaseIds.stream().toArray(String[]::new), parentIds.stream().toArray(String[]::new),
+                                        layers.stream().toArray(String[]::new), mainlineStates.stream().toArray(String[]::new), releaseRelationShips.stream().toArray(String[]::new),
+                                        indexes.stream().toArray(String[]::new), comments.stream().toArray(String[]::new));
         }
     }
 
@@ -3300,7 +3321,7 @@ public class ProjectPortlet extends FossologyAwarePortlet {
         JSONObject jsonObject = JSONFactoryUtil.createJSONObject();
         Release release = releaseClient.getReleaseById(releaseId,user);
         List<ReleaseLinkJSON> releaseLinkJSONS = releaseClient.getReleaseRelationNetworkOfRelease(release, user);
-        jsonObject.put(PortalConstants.RESULT, releaseLinkJSONS);
+        jsonObject.put(PortalConstants.RESULT, new Gson().toJson(releaseLinkJSONS));
         try {
             writeJSON(request, response, jsonObject);
         } catch (IOException e) {
@@ -3506,6 +3527,23 @@ public class ProjectPortlet extends FossologyAwarePortlet {
                 rowsHaveDiff.add(checkedReleaseIds.size());
                 subNodesIsDiff(subNode, rowsHaveDiff, checkedReleaseIds);
             }
+        }
+    }
+
+    private void getInformationFromNetwork(List<ReleaseLinkJSON> network, List<String> releaseIds, List<String> parentIds,
+                                           List<String> layers, List<String> mainlineStates, List<String> releaseRelationShips,
+                                           List<String> indexes, List<String>comments, int currentLayer, String parentId) {
+        int index = 0;
+        for (ReleaseLinkJSON releaseNode : network) {
+            releaseIds.add(releaseNode.getReleaseId());
+            layers.add(currentLayer + "");
+            mainlineStates.add(releaseNode.getMainlineState());
+            releaseRelationShips.add(releaseNode.getReleaseRelationship());
+            indexes.add(index + "");
+            comments.add(releaseNode.getComment() != null ? releaseNode.getComment() : "");
+            parentIds.add(parentId);
+            getInformationFromNetwork(releaseNode.getReleaseLink(), releaseIds, parentIds, layers, mainlineStates, releaseRelationShips, indexes, comments, currentLayer + 1, releaseNode.getReleaseId());
+            index ++;
         }
     }
 }
