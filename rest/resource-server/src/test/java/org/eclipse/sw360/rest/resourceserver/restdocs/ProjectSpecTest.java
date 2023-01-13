@@ -148,6 +148,7 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
     private Project project;
     private Set<Project> projectList = new HashSet<>();
     private Attachment attachment;
+    private Project projectTest;
 
 
     @Before
@@ -551,6 +552,37 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
         given(this.projectServiceMock.getReleasesIdByProjectId(eq(project.getId()), any(), eq("false"))).willReturn(Collections.singleton("3765276512"));
         given(this.releaseServiceMock.getReleaseDependencies(eq(Collections.singleton("3765276512")), any())).willReturn(Collections.singletonList(releaseLinkJSON1));
         given(this.releaseServiceMock.getReleaseDependencies(eq(Collections.singleton("5578999")), any())).willReturn(Collections.singletonList(releaseLinkJSON2));
+
+        projectTest = new Project();
+        projectTest.setId("1234321");
+        projectTest.setName("Project Test");
+        projectTest.setProjectType(ProjectType.PRODUCT);
+        projectTest.setVersion("1.0.2");
+        projectTest.setReleaseRelationNetwork(
+                "[\n" +
+                        "  {\n" +
+                        "    \"releaseId\": \"3765276512\",\n" +
+                        "    \"releaseLink\": [\n" +
+                        "      {\n" +
+                        "        \"releaseId\": \"5578999\",\n" +
+                        "        \"releaseLink\": [],\n" +
+                        "        \"releaseRelationship\": \"CONTAINED\",\n" +
+                        "        \"mainlineState\": \"MAINLINE\",\n" +
+                        "        \"comment\": \"Test Comment\",\n" +
+                        "        \"createOn\": \"2022-09-12\",\n" +
+                        "        \"createBy\": \"admin@sw360.org\"\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    \"releaseRelationship\": \"CONTAINED\",\n" +
+                        "    \"mainlineState\": \"MAINLINE\",\n" +
+                        "    \"comment\": \"Test Comment\",\n" +
+                        "    \"createOn\": \"2022-09-12\",\n" +
+                        "    \"createBy\": \"admin@sw360.org\"\n" +
+                        "  }\n" +
+                        "]"
+        );
+        given(this.projectServiceMock.getProjectForUserById(eq(projectTest.getId()), any())).willReturn(projectTest);
+        given(this.projectServiceMock.getDirectDependenciesOfReleaseInNetwork(any(), any(), any())).willReturn(Collections.singletonList(release2));
     }
 
     @Test
@@ -1819,6 +1851,40 @@ public class ProjectSpecTest extends TestRestDocsSpecBase {
                                 subsectionWithPath("_embedded.createdBy").description("The user who created this project")
                         )));
     }
+
+    @Test
+    public void should_document_get_dependencies_of_release_in_project() throws Exception {
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+
+        mockMvc.perform(get("/api/projects/network/" + projectTest.getId() + "/releases/3765276512")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .param("page", "0")
+                        .param("page_entries", "5")
+                        .param("sort", "name,desc")
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                        requestParameters(
+                                parameterWithName("page").description("Page of releases"),
+                                parameterWithName("page_entries").description("Amount of releases page"),
+                                parameterWithName("sort").description("Defines order of the releases")
+                        ),
+                        links(
+                                linkWithRel("curies").description("Curies are used for online documentation"),
+                                linkWithRel("first").description("Link to first page"),
+                                linkWithRel("last").description("Link to last page")
+                        ),
+                        responseFields(
+                                subsectionWithPath("_embedded.sw360:releases").description("An array of <<resources-releases, Releases resources>>"),
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources"),
+                                fieldWithPath("page").description("Additional paging information"),
+                                fieldWithPath("page.size").description("Number of releases per page"),
+                                fieldWithPath("page.totalElements").description("Total number of all existing releases"),
+                                fieldWithPath("page.totalPages").description("Total number of pages"),
+                                fieldWithPath("page.number").description("Number of the current page")
+                        )));
+    }
+
     private void add_patch_releases(MockHttpServletRequestBuilder requestBuilder) throws Exception {
         List<String> releaseIds = Arrays.asList("3765276512", "5578999", "3765276513");
 

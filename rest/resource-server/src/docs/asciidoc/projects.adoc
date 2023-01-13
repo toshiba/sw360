@@ -600,3 +600,15 @@ include::{snippets}/should_document_update_project_with_readable_format/curl-req
 
 ===== Example response
 include::{snippets}/should_document_update_project_with_readable_format/http-response.adoc[]
+
+==== Get direct dependencies of a release in project's dependency network
+A `GET` request is used to get direct dependencies of a release in project's dependency network
+
+===== Response structure
+include::{snippets}/should_document_get_dependencies_of_release_in_project/response-fields.adoc[]
+
+===== Example request
+include::{snippets}/should_document_get_dependencies_of_release_in_project/curl-request.adoc[]
+
+===== Example response
+include::{snippets}/should_document_get_dependencies_of_release_in_project/http-response.adoc[]

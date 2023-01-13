@@ -988,6 +988,49 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @RequestMapping(value = PROJECTS_URL + "/network/{project_id}/releases/{release_id}", method = RequestMethod.GET)
+    public ResponseEntity getDependenciesOfReleaseInProject(
+            Pageable pageable,
+            @PathVariable("project_id") String projectId,
+            @PathVariable("release_id") String releaseId, HttpServletRequest request) throws URISyntaxException, PaginationParameterException, ResourceClassNotFoundException {
+
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        Project projectById = null;
+        try {
+            projectById = projectService.getProjectForUserById(projectId, sw360User);
+        } catch (TException e) {
+            return new ResponseEntity<>("Project " + projectId + " not found", HttpStatus.NOT_FOUND);
+        }
+
+        List<Release> directDependencies = new ArrayList<>();
+        try {
+            directDependencies.addAll(projectService.getDirectDependenciesOfReleaseInNetwork(projectById, releaseId, sw360User));
+        } catch (TException tException) {
+            return new ResponseEntity<>(tException.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        PaginationResult<Release> paginationResult = restControllerHelper.createPaginationResult(request, pageable,
+                directDependencies, SW360Constants.TYPE_RELEASE);
+
+        final List<EntityModel<Release>> releaseResources = paginationResult.getResources().stream()
+                .map(sw360Release -> wrapTException(() -> {
+                    final Release embeddedRelease = restControllerHelper.convertToEmbeddedRelease(sw360Release);
+                    final HalResource<Release> releaseResource = new HalResource<>(embeddedRelease);
+                    return releaseResource;
+                })).collect(Collectors.toList());
+
+        CollectionModel resources;
+        if (releaseResources.size() == 0) {
+            resources = restControllerHelper.emptyPageResource(Project.class, paginationResult);
+        } else {
+            resources = restControllerHelper.generatePagesResource(paginationResult, releaseResources);
+        }
+
+        HttpStatus status = resources == null ? HttpStatus.NO_CONTENT : HttpStatus.OK;
+        return new ResponseEntity<>(resources, status);
+    }
+
     @Override
     public RepositoryLinksResource process(RepositoryLinksResource resource) {
         resource.add(linkTo(ProjectController.class).slash("api" + PROJECTS_URL).withRel("projects"));

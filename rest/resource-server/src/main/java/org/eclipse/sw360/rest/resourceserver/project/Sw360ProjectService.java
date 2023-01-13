@@ -43,6 +43,7 @@ import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseClearingStatusData;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseLink;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseLinkJSON;
+import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
 import org.eclipse.sw360.datahandler.thrift.licenses.LicenseService;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectData;
@@ -448,5 +449,46 @@ public class Sw360ProjectService implements AwareOfRestServices<Project> {
         }
 
         return flatList;
+    }
+
+    public List<Release> getDirectDependenciesOfReleaseInNetwork(Project project, String releaseId, User sw360User) throws TException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ComponentService.Iface releaseClient = getThriftComponentClient();
+        Set<String> dependenciesId = new HashSet<>();
+        try {
+            List<ReleaseLinkJSON> dependencyNetwork = objectMapper.readValue(project.getReleaseRelationNetwork(), new TypeReference<List<ReleaseLinkJSON>>() {
+            });
+            for (ReleaseLinkJSON releaseNode : dependencyNetwork) {
+                if (releaseNode.getReleaseId().equals(releaseId)) {
+                    Set<String> subReleaseIds = releaseNode.getReleaseLink().stream().map(ReleaseLinkJSON::getReleaseId).collect(Collectors.toSet());
+                    dependenciesId.addAll(subReleaseIds);
+                } else {
+                    dependenciesId.addAll(getDependenciesOfSubNodeByReleaseId(releaseNode.getReleaseLink(), releaseId));
+                }
+            }
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+
+        List<Release> dependenceReleases = releaseClient.getReleasesById(dependenciesId, sw360User);
+        return dependenceReleases;
+    }
+
+    public Set<String> getDependenciesOfSubNodeByReleaseId(List<ReleaseLinkJSON> subNode, String releaseId) {
+        Set<String> dependenciesId = new HashSet<>();
+        for (ReleaseLinkJSON releaseNode : subNode) {
+            if (releaseNode.getReleaseId().equals(releaseId)) {
+                Set<String> subReleaseIds = releaseNode.getReleaseLink().stream().map(ReleaseLinkJSON::getReleaseId).collect(Collectors.toSet());
+                dependenciesId.addAll(subReleaseIds);
+            } else {
+                dependenciesId.addAll(getDependenciesOfSubNodeByReleaseId(releaseNode.getReleaseLink(), releaseId));
+            }
+        }
+        return dependenciesId;
+    }
+
+    public ComponentService.Iface getThriftComponentClient() {
+        ComponentService.Iface componentClient = new ThriftClients().makeComponentClient();
+        return componentClient;
     }
 }
