@@ -525,7 +525,7 @@
                             resolve(body.result);
                         },
                         error: function() {
-                            reject("ERROR");
+                            reject("");
                         }
                     });
                 });

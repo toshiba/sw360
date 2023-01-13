@@ -34,7 +34,7 @@
 			<div id="detailTab" class="list-group" data-initial-tab="${selectedTab}" role="tablist">
 			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-Summary'}">active</core_rt:if>" href="#tab-Summary" data-toggle="list" role="tab"><liferay-ui:message key="summary" /></a>
 			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-Administration'}">active</core_rt:if>" href="#tab-Administration" data-toggle="list" role="tab"><liferay-ui:message key="administration" /></a>
-			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-licenseClearing'}">active</core_rt:if>" href="#tab-licenseClearing" data-toggle="list" role="tab"><liferay-ui:message key="license.clearing" /></a>		
+			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-licenseClearing'}">active</core_rt:if>" href="#tab-licenseClearing" data-toggle="list" role="tab" id="licenseClearing"><liferay-ui:message key="license.clearing" /></a>
 			<core_rt:if test="${isProjectObligationsEnabled}">
 			<a id="obligationCountBadge" class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-Obligations'}">active</core_rt:if>" href="#tab-Obligations" data-toggle="list" role="tab"><liferay-ui:message key="obligations" />
 			</a>

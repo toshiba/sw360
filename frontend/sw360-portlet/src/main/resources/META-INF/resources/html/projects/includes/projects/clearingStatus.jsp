@@ -255,16 +255,26 @@ AUI().use('liferay-portlet-url', function () {
     require(['jquery', 'modules/ajax-treetable', 'utils/render', 'bridges/datatables', 'modules/dialog'], function($, ajaxTreeTable, render, datatables, dialog) {
         var clearingStatuslisturl= '<%=clearingStatuslisturl%>';
         var emptyMsg = '<liferay-ui:message key="no.linked.releases.or.projects" />';
+        let licenseClearingTabLoaded = false;
 
+        $('#licenseClearing').on('click', function() {
+            if (licenseClearingTabLoaded == false) {
+                loadListView();
+                loadTreeView();
+                licenseClearingTabLoaded = true;
+            }
+        });
 
-        $.ajax({url: clearingStatuslisturl,
-                type: 'GET',
-                dataType: 'json'
-               }).done(function(result){
-            createClearingNetworkTable(result);
-            $("#pills-network-listView #clearingStatusSpinner").addClass("d-none");
-            $("#clearingNetworkTable").removeClass("d-none");
-          });
+        function loadListView() {
+            $.ajax({url: clearingStatuslisturl,
+                    type: 'GET',
+                    dataType: 'json'
+                   }).done(function(result){
+                createClearingNetworkTable(result);
+                $("#pills-network-listView #clearingStatusSpinner").addClass("d-none");
+                $("#clearingNetworkTable").removeClass("d-none");
+            });
+        }
 
         $('#search_network_table').on('input', function() {
             $(".releaseFilterTT #dropdownmenu input[type=checkbox]:checked").each(function() {
@@ -801,38 +811,40 @@ AUI().use('liferay-portlet-url', function () {
         });
 
         var clearingStatuslistOnloadurl= '<%=clearingStatuslistOnloadurl%>';
-        $.ajax({url: clearingStatuslistOnloadurl, success: function(resultTreeView){
-            if(resultTreeView.trim().length===0) {
-                $("#DependencyInfo #noRecordRow").removeClass("d-none");
-            }
-            else {
-                $("#DependencyInfo #noRecordRow").remove();
-                $("#DependencyInfo div#toggle").removeClass("d-none");
-                $("#DependencyInfo tbody").html(resultTreeView);
+        function loadTreeView() {
+            $.ajax({url: clearingStatuslistOnloadurl, success: function(resultTreeView){
+                if(resultTreeView.trim().length===0) {
+                    $("#DependencyInfo #noRecordRow").removeClass("d-none");
+                }
+                else {
+                    $("#DependencyInfo #noRecordRow").remove();
+                    $("#DependencyInfo div#toggle").removeClass("d-none");
+                    $("#DependencyInfo tbody").html(resultTreeView);
 
-                $('#DependencyInfo').find(".editAction").each(function(){
-                    $(this).html(createActions(makeReleaseUrl($(this).data("releaseid"))));
-                });
+                    $('#DependencyInfo').find(".editAction").each(function(){
+                        $(this).html(createActions(makeReleaseUrl($(this).data("releaseid"))));
+                    });
 
-                $('#DependencyInfo').find(".editProjectAction").each(function(){
-                    $(this).html(createActions(makeProjectUrl($(this).data("projectid"))));
-                });
+                    $('#DependencyInfo').find(".editProjectAction").each(function(){
+                        $(this).html(createActions(makeProjectUrl($(this).data("projectid"))));
+                    });
 
-                $('#DependencyInfo').find(".projectState").each(function(){
-                    $(this).html(renderProjectStateBox($(this).data("projectstate"),$(this).data("projectclearingstate")));
-                });
+                    $('#DependencyInfo').find(".projectState").each(function(){
+                        $(this).html(renderProjectStateBox($(this).data("projectstate"),$(this).data("projectclearingstate")));
+                    });
 
-                $('#DependencyInfo').find(".releaseClearingState").each(function(){
-                    $(this).html(renderClearingStateBox($(this).data("releaseclearingstate"), $(this).data("releaseid")));
-                });
-                $('#DependencyInfo tr').find("td.actions").each(function() {
-                    renderLicenses($(this));
-                });
-            }
-            $("#clearingStatusTreeViewSpinner").remove();
-            $("#DependencyInfo").removeClass("d-none");
-            ajaxTreeTable.setup('DependencyInfo', config.loadNodeUrl, dataCallbackNetworkTreeTable, renderCallbackNetworkTreeTable);
-          }});
+                    $('#DependencyInfo').find(".releaseClearingState").each(function(){
+                        $(this).html(renderClearingStateBox($(this).data("releaseclearingstate"), $(this).data("releaseid")));
+                    });
+                    $('#DependencyInfo tr').find("td.actions").each(function() {
+                        renderLicenses($(this));
+                    });
+                }
+                $("#clearingStatusTreeViewSpinner").remove();
+                $("#DependencyInfo").removeClass("d-none");
+                ajaxTreeTable.setup('DependencyInfo', config.loadNodeUrl, dataCallbackNetworkTreeTable, renderCallbackNetworkTreeTable);
+              }});
+       }
 
         $('#btnExportGroup a.dropdown-item').on('click', function(event) {
             exportSpreadsheet($(event.currentTarget).data('type'));
