@@ -199,8 +199,8 @@ public class SW360ProjectClient extends SW360Client {
      * in dependency network of specific project.
      *
      * @param projectId  the ID of the project in question
-     * @param transitive the transitive flag
-     * @return a future with a list of the releases linked to the project
+     * @param releaseId  the ID of the release in question
+     * @return a future with a list of the releases is the dependencies of a release that are linked directly
      */
     public CompletableFuture<List<SW360SparseRelease>> getDirectDependenciesOfRelease(String projectId, String releaseId) {
         String uri = resourceUrl(PROJECTS_ENDPOINT, PROJECT_NETWORK, projectId,
