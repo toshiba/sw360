@@ -392,6 +392,56 @@ public class SW360ProjectClientIT extends AbstractMockServerTest {
         assertThat(releases).isEmpty();
     }
 
+    @Test
+    public void checkDirectDependenciesOfRelease() throws IOException {
+        SW360ProjectDTO projectIT = readTestJsonFile(resolveTestFileURL("projectIT.json"), SW360ProjectDTO.class);
+        List<String> releases = Arrays.asList("release1", "releaseMe", "releaseParty");
+        SW360Release release = null;
+        SW360Release release2 = null;
+        if (RUN_REST_INTEGRATION_TEST) {
+            SW360Component component = SW360ReleaseClientIT.componentFromJsonForIntegrationTest();
+            component.setName("TestProject");
+            SW360Component createdComponent = waitFor(componentClient.createComponent(component));
+            SW360Release sw360Release = new SW360Release();
+            sw360Release.setComponentId(createdComponent.getId());
+            sw360Release.setVersion("1.1");
+            release = waitFor(releaseClient.createRelease(sw360Release));
+            assertNotNull(release);
+            SW360Release sw360Release2 = new SW360Release();
+            sw360Release2.setComponentId(createdComponent.getId());
+            sw360Release2.setVersion("1.2");
+            release2 = waitFor(releaseClient.createRelease(sw360Release2));
+            assertNotNull(release2);
+            releases = Arrays.asList(release.getId(), release2.getId());
+        }
+        List<SW360ReleaseLinkJSON> dependencyNetwork= new ArrayList<>();
+        SW360ReleaseLinkJSON releaseLinkJSON1 = new SW360ReleaseLinkJSON(releases.get(0), Collections.emptyList(), "CONTAINED", "MAINLINE", "","","");
+        SW360ReleaseLinkJSON releaseLinkJSON2 = new SW360ReleaseLinkJSON(releases.get(1), Collections.emptyList(), "CONTAINED", "MAINLINE", "","","");
+        releaseLinkJSON1.setReleaseLink(Collections.singletonList(releaseLinkJSON2));
+        dependencyNetwork.add(releaseLinkJSON1);
+        projectIT.setDependencyNetwork(dependencyNetwork);
+        String projId = createProject(projectIT);
+
+        if (RUN_REST_INTEGRATION_TEST) {
+            List<SW360SparseRelease> releasesLinked = waitFor(projectClient.getDirectDependenciesOfRelease(projId, releases.get(0)));
+            assertThat(releasesLinked).hasSize(1);
+        }
+
+        String urlPathGet = "/projects/network/" + projId + "/releases/" + releases.get(0);
+        wireMockRule.stubFor(get(urlPathEqualTo(urlPathGet))
+                .willReturn(aJsonResponse(HttpConstants.STATUS_OK)
+                        .withBodyFile("all_direct_dependencies_of_release.json")));
+
+        List<SW360SparseRelease> releasesFetched = waitFor(projectClient.getDirectDependenciesOfRelease(projId, releases.get(0)));
+        deleteProject(projId);
+        if (RUN_REST_INTEGRATION_TEST) {
+            SW360ReleaseClientIT.cleanupRelease(release, releaseClient);
+            SW360ReleaseClientIT.cleanupRelease(release2, releaseClient);
+            SW360ReleaseClientIT.cleanupComponent(componentClient);
+        }
+        assertThat(releasesFetched).hasSize(RUN_REST_INTEGRATION_TEST ? 1 : 6);
+        assertHasLinks(releasesFetched);
+    }
     private void deleteProject(String projectId) throws IOException {
         if (RUN_REST_INTEGRATION_TEST) {
             Integer statusCode = waitFor(projectClient.deleteProject(projectId));
