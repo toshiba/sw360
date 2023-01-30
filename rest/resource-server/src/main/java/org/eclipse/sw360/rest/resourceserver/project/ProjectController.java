@@ -1003,6 +1003,11 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
             return new ResponseEntity<>("Project " + projectId + " not found", HttpStatus.NOT_FOUND);
         }
 
+        Set<String> releaseIdsInNetwork = SW360Utils.getReleaseIdsLinkedWithProject(projectById);
+        if (!releaseIdsInNetwork.contains(releaseId)) {
+            return new ResponseEntity<>("Release " + releaseId + " not found", HttpStatus.NOT_FOUND);
+        }
+
         List<Release> directDependencies = new ArrayList<>();
         try {
             directDependencies.addAll(projectService.getDirectDependenciesOfReleaseInNetwork(projectById, releaseId, sw360User));
