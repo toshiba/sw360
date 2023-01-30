@@ -210,8 +210,8 @@
             var $dataTable,
                 $releaseDialog;
             let releaseId = "";
-            var releaseWithRelations = '${project.releaseRelationNetwork}';
-            let projectId = '${project.id}';
+            var releaseWithRelations = ${project.releaseRelationNetwork};
+            let projectId = "${project.id}";
             let layer = 1;
             let releaseWithRelationsString = "[]";
 
