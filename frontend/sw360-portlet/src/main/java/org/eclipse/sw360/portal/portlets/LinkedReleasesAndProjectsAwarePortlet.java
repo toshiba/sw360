@@ -151,14 +151,7 @@ public abstract class LinkedReleasesAndProjectsAwarePortlet extends AttachmentAw
     }
 
     protected void putDirectlyLinkedProjectsInRequest(PortletRequest request, Project project, User user) {
-        final Collection<ProjectLink> linkedProjects = SW360Utils.getLinkedProjects(project, false, thriftClients, log, user);
-        List<ProjectLink> secondLevelLinks = linkedProjects
-                .stream()
-                .map(ProjectLink::getSubprojects)
-                .filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
-        request.setAttribute(PROJECT_LIST, secondLevelLinks);
+        request.setAttribute(PROJECT_LIST, SW360Utils.getDirectlyLinkedProjects(project, user));
     }
 
     public Function<ProjectLink, ProjectLink> createProjectLinkMapper(Function<ReleaseLink, ReleaseLink> releaseLinkMapper){

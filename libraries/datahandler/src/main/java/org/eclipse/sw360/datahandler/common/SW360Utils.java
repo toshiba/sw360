@@ -865,4 +865,17 @@ public class SW360Utils {
         filterMap.put(Project._Fields.RELEASE_RELATION_NETWORK.getFieldName(), values);
         return filterMap;
     }
+
+    public static List<ProjectLink> getDirectlyLinkedProjects(Project project, User user) {
+        if (project != null) {
+            try {
+                ProjectService.Iface client = new ThriftClients().makeProjectClient();
+                List<ProjectLink> linkedProjects = client.getDirectLinkedProjectsOfProject(project, user);
+                return linkedProjects;
+            } catch (TException e) {
+                log.error("Could not get linked projects", e);
+            }
+        }
+        return Collections.emptyList();
+    }
 }

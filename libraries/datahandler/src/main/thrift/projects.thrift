@@ -621,4 +621,10 @@ service ProjectService {
     * Get all list projects
     */
     list<Project> getAll();
+
+    /**
+     * get a list of projects are linked directly with a project that matches the id `id`
+     * do not get linked release information
+     */
+    list<ProjectLink> getDirectLinkedProjectsOfProject(1: Project project, 2: User user);
 }

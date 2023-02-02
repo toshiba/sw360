@@ -456,4 +456,10 @@ public class ProjectHandler implements ProjectService.Iface {
     public List<Project> getAll(){
         return handler.getAll();
     }
+
+    @Override
+    public List<ProjectLink> getDirectLinkedProjectsOfProject(Project project, User user) throws TException {
+        assertNotNull(project);
+        return handler.getDirectLinkedProjectsOfProject(project, user);
+    }
 }

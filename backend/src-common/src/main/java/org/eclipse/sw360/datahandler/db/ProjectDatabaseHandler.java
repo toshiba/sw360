@@ -1757,4 +1757,30 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
     public List<Project> getAll(){
         return repository.getAll();
     }
+
+    public List<ProjectLink> getDirectLinkedProjectsOfProject(Project project, User user) {
+        if (!project.isSetLinkedProjects() || project.getLinkedProjects().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ProjectLink> directLinkedProjects = new ArrayList<>();
+        for (Map.Entry<String, ProjectProjectRelationship> entry : project.getLinkedProjects().entrySet()) {
+            Project subProject = repository.get(entry.getKey());
+            if (subProject != null && user != null && makePermission(subProject, user).isActionAllowed(RequestedAction.READ)) {
+                ProjectLink projectLink = new ProjectLink(subProject.getId(), subProject.name);
+                projectLink
+                        .setNodeId(generateNodeId(subProject.getId()))
+                        .setParentNodeId(project.getId())
+                        .setRelation(entry.getValue().getProjectRelationship())
+                        .setEnableSvm(entry.getValue().isEnableSvm())
+                        .setVersion(subProject.getVersion())
+                        .setState(subProject.getState())
+                        .setProjectType(subProject.getProjectType())
+                        .setClearingState(subProject.getClearingState())
+                        .setTreeLevel(0);
+                directLinkedProjects.add(projectLink);
+            }
+        }
+        return directLinkedProjects;
+    }
 }
