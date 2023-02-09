@@ -299,6 +299,8 @@ public class ProjectPortlet extends FossologyAwarePortlet {
             serveAddVendor(request, response);
         } else if (VIEW_DEPARTMENT.equals(action)) {
             serveViewDepartment(request, response);
+        } else if (ATTACHMENT_USAGE_ON_CLICK.equals(action)) {
+            serverAttachmentUsageOnClick(request, response);
         }
     }
 
@@ -1649,9 +1651,7 @@ public class ProjectPortlet extends FossologyAwarePortlet {
                 request.setAttribute(PROJECT, project);
                 request.setAttribute(PARENT_PROJECT_PATH, project.getId());
                 setAttachmentsInRequest(request, project);
-                List<ProjectLink> mappedProjectLinks = createLinkedProjectsWithAllReleases(project, user);
-                request.setAttribute(PROJECT_LIST, mappedProjectLinks);
-                List<ProjectLink> allSubProjectLinks = createLinkedProjectsWithAllReleases(project, Function.identity(), true, user);
+                List<ProjectLink> allSubProjectLinks = SW360Utils.getDirectlyLinkedProjects(project, user);
                 Collection<ProjectLink> links = allSubProjectLinks.stream().collect(
                         Collectors.toMap(ProjectLink::getId, Function.identity(), (oldValue, newValue) -> oldValue)).values();
                 request.setAttribute(ALL_SUB_PROJECT_LINK, links);
@@ -1661,7 +1661,6 @@ public class ProjectPortlet extends FossologyAwarePortlet {
                 request.setAttribute(ALL_USING_PROJECTS_COUNT, allUsingProjectCount);
                 putReleasesAndProjectIntoRequest(request, id, user);
                 putVulnerabilitiesInRequest(request, id, user);
-                putAttachmentUsagesInRequest(request, id);
                 request.setAttribute(
                         WRITE_ACCESS_USER,
                         PermissionUtils.makePermission(project, user).isActionAllowed(RequestedAction.WRITE));
@@ -3556,5 +3555,26 @@ public class ProjectPortlet extends FossologyAwarePortlet {
             getInformationFromNetwork(releaseNode.getReleaseLink(), releaseIds, parentIds, layers, mainlineStates, releaseRelationShips, indexes, comments, currentLayer + 1, releaseNode.getReleaseId());
             index ++;
         }
+    }
+
+    private void serverAttachmentUsageOnClick(ResourceRequest request, ResourceResponse response) throws PortletException, IOException{
+        final User user = UserCacheHolder.getUserFromRequest(request);
+        String projectId = request.getParameter(PROJECT_ID);
+        List<ProjectLink> mappedProjectLinks = new ArrayList<>();
+        Project project = new Project();
+        try {
+            ProjectService.Iface client = thriftClients.makeProjectClient();
+            project = client.getProjectById(projectId, user);
+            mappedProjectLinks.addAll(createLinkedProjectsWithAllReleases(project, user));
+        } catch (TException e) {
+            log.error("Error getting projects!", e);
+        }
+        request.setAttribute(PROJECT_LIST, mappedProjectLinks);
+        request.setAttribute(
+                WRITE_ACCESS_USER,
+                PermissionUtils.makePermission(project, user).isActionAllowed(RequestedAction.WRITE));
+        request.setAttribute(PortalConstants.PARENT_SCOPE_GROUP_ID, request.getParameter(PortalConstants.PARENT_SCOPE_GROUP_ID));
+        putAttachmentUsagesInRequest(request, projectId);
+        include("/html/projects/includes/attachmentUsagesRows.jsp", request, response, PortletRequest.RESOURCE_PHASE);
     }
 }

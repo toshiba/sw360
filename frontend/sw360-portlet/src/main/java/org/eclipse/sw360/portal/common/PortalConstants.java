@@ -716,6 +716,7 @@ public class PortalConstants {
     public static final String RESTRICTED_RELEASE = "Restricted release";
     public static final String GET_HTML_RELEASE_ROWS = "getHtmlReleaseRows";
     public static final String DEFAULT_RELEASE_RELATION_NETWORK = "[]";
+    public static final String ATTACHMENT_USAGE_ON_CLICK = "attachment_usage_on_click";
     static {
         Properties props = CommonUtils.loadProperties(PortalConstants.class, PROPERTIES_FILE_PATH);
 

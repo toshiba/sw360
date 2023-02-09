@@ -55,9 +55,6 @@
     <%@include file="/html/projects/includes/projects/clearingRequest.jspf" %>
 </core_rt:if>
 
-<jsp:useBean id="projectList" type="java.util.List<org.eclipse.sw360.datahandler.thrift.projects.ProjectLink>"
-             scope="request"/>
-
 
 <div class="tab-content" id="pills-dependencyNetwork">
     <div class="tab-pane fade show active" id="pills-network-treeView" role="tabpanel" aria-labelledby="pills-network-tree-tab">
@@ -85,7 +82,7 @@
                                 <a href="#" id="collapseAll" class="text-primary"> <liferay-ui:message key="collapse.all" /></a>)
                             </div>
                             <core_rt:if test="${projectList.size() > 1 or numberLinkedRelease > 0}">
-                                Linked Releases: ${numberLinkedRelease}, Linked Projects: ${projectList.size() - 1}<br>
+                                Linked Releases: ${numberLinkedRelease}, Linked Projects: ${allSubProjectLink.size()}<br>
                             </core_rt:if>
                         </div>
                     </th>
@@ -283,7 +280,7 @@ AUI().use('liferay-portlet-url', function () {
             search_network_table($(this).val().trim());
         });
 
-        $('a[href="#"]').click(function(e) {
+        $('#DependencyInfo a[href="#"]').click(function(e) {
             e.preventDefault();
             $('#DependencyInfo').treetable(e.target.id);
             return false;
@@ -359,7 +356,6 @@ AUI().use('liferay-portlet-url', function () {
                 $('#DependencyInfo tbody tr').show();
             }
         }
-
 
         function showDependenceRow(value, $thiz) {
             let parentId = $thiz.data().ttParentId;

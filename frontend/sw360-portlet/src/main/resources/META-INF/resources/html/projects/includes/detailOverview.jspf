@@ -42,7 +42,7 @@
 			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-ECC'}">active</core_rt:if>" href="#tab-ECC" data-toggle="list" role="tab"><liferay-ui:message key="ecc" /></a>
 			<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-Attachments'}">active</core_rt:if>" href="#tab-Attachments" data-toggle="list" role="tab"><liferay-ui:message key="attachments" /></a>
 			<core_rt:if test="${inProjectDetailsContext}">
-				<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-attachmentUsages'}">active</core_rt:if>" href="#tab-attachmentUsages" data-toggle="list" role="tab"><liferay-ui:message key="attachment.usages" /></a>
+				<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-attachmentUsages'}">active</core_rt:if>" href="#tab-attachmentUsages" data-toggle="list" role="tab" id="attachmentUsage"><liferay-ui:message key="attachment.usages" /></a>
 			</core_rt:if>
 			<core_rt:if test="${inProjectDetailsContext}">
 				<a class="list-group-item list-group-item-action <core_rt:if test="${selectedTab == 'tab-Vulnerabilities'}">active</core_rt:if>" href="#tab-Vulnerabilities" data-toggle="list" role="tab">
