@@ -717,6 +717,7 @@ public class PortalConstants {
     public static final String GET_HTML_RELEASE_ROWS = "getHtmlReleaseRows";
     public static final String DEFAULT_RELEASE_RELATION_NETWORK = "[]";
     public static final String ATTACHMENT_USAGE_ON_CLICK = "attachmentUsageOnClick";
+    public static final String SUB_PROJECTS_LINK_TRANSITIVE = "subProjectsLinkTransitive";
     static {
         Properties props = CommonUtils.loadProperties(PortalConstants.class, PROPERTIES_FILE_PATH);
 

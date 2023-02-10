@@ -623,8 +623,14 @@ service ProjectService {
     list<Project> getAll();
 
     /**
-     * get a list of projects are linked directly with a project that matches the id `id`
+     * get a list of projects are linked directly with a project
      * do not get linked release information
      */
     list<ProjectLink> getDirectLinkedProjectsOfProject(1: Project project, 2: User user);
+
+    /**
+     * get a list of projects are sub project of a project transitively
+     * do not get linked release information
+     */
+    list<ProjectLink> getLinkedProjectsTransitive(1: Project project, 2: User user);
 }

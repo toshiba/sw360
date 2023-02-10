@@ -1692,6 +1692,8 @@ public class ProjectPortlet extends FossologyAwarePortlet {
                         request.setAttribute(NUMBER_LINKED_RELEASE, 0);
                     }
                 }
+                List<ProjectLink> listSubProjectLinksTransitive = SW360Utils.getLinkedProjectsTransitive(project, user);
+                request.setAttribute(SUB_PROJECTS_LINK_TRANSITIVE, listSubProjectLinksTransitive);
             } catch (SW360Exception sw360Exp) {
                 setSessionErrorBasedOnErrorCode(request, sw360Exp.getErrorCode());
             } catch (TException e) {

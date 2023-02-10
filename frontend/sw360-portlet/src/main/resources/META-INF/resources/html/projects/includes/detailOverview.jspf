@@ -246,8 +246,8 @@
                                 <ul class="nav nav-tabs font-weight-bold border-bottom" role="tablist">
                                     <li class="nav-item border rounded border-bottom-0"><a class="nav-link active" id="parentProject-tab" data-toggle="tab" href="#parentProject" role="tab"
                                         aria-controls="parentProject" aria-selected="true"><sw360:ProjectName project="${project}" /></a></li>
-                                    <core_rt:forEach var="subprojectLink" items="${allSubProjectLink}">
-                                    <core_rt:if test="${subprojectLink.id != project.id}">
+                                    <core_rt:forEach var="subprojectLink" items="${subProjectsLinkTransitive}">
+                                        <core_rt:if test="${subprojectLink.id != project.id}">
                                         <li class="nav-item border rounded border-bottom-0"><a class="nav-link" id="subProject-${subprojectLink.id}-tab" data-toggle="tab"
                                             href="#subProject-${subprojectLink.id}" role="tab" aria-controls="subProject-${subprojectLink.id}" aria-selected="false"><sw360:out value="${subprojectLink.name}" />  (<sw360:out value="${subprojectLink.version}" />)</a>
                                         </li>
@@ -258,7 +258,7 @@
                                     <div class="tab-pane fade show active" id="parentProject" role="tabpanel" aria-labelledby="parentProject-tab">
                                         <%@include file="/html/projects/includes/projects/vulnerabilities.jsp"%>
                                     </div>
-                                    <core_rt:forEach var="subprojectLink" items="${allSubProjectLink}">
+                                    <core_rt:forEach var="subprojectLink" items="${subProjectsLinkTransitive}">
                                      <core_rt:if test="${subprojectLink.id != project.id}">
                                         <div class="tab-pane fade subproject" id="subProject-${subprojectLink.id}" role="tabpanel" aria-labelledby="subProject-${subprojectLink.id}-tab">
                                             <%@include file="/html/projects/includes/projects/vulnerabilitiesFetch.jspf"%>

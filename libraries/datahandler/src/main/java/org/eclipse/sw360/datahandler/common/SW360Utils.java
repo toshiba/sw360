@@ -878,4 +878,17 @@ public class SW360Utils {
         }
         return Collections.emptyList();
     }
+
+    public static List<ProjectLink> getLinkedProjectsTransitive(Project project, User user) {
+        if (project != null) {
+            try {
+                ProjectService.Iface client = new ThriftClients().makeProjectClient();
+                List<ProjectLink> linkedProjects = client.getLinkedProjectsTransitive(project, user);
+                return linkedProjects;
+            } catch (TException e) {
+                log.error("Could not get linked projects", e);
+            }
+        }
+        return Collections.emptyList();
+    }
 }

@@ -462,4 +462,9 @@ public class ProjectHandler implements ProjectService.Iface {
         assertNotNull(project);
         return handler.getDirectLinkedProjectsOfProject(project, user);
     }
+
+    @Override
+    public List<ProjectLink> getLinkedProjectsTransitive(Project project, User user) {
+        return handler.getLinkedProjectsTransitive(project, user);
+    }
 }
