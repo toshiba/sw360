@@ -95,14 +95,15 @@
                     <td colspan="7"><liferay-ui:message key="no.linked.releases.or.projects" /></td>
                 </tr>
             </core_rt:if>
-            <div class="spinner text-center" style="display: none;">
-                <div class="spinner-border" role="status">
-                    <span class="sr-only"><liferay-ui:message key="loading" /></span>
-                </div>
-            </div>
         </tbody>
     </table>
 </form>
+<br/>
+<div class="spinner text-center attachment-usage-spinner" style="display: none;">
+    <div class="spinner-border" role="status">
+        <span class="sr-only"><liferay-ui:message key="loading" /></span>
+    </div>
+</div>
 
 <script>
     require(['jquery', 'modules/ajax-treetable', 'modules/alert', 'modules/button'], function($, ajaxTreeTable, alert, button) {
@@ -121,12 +122,12 @@
             });
 
             async function loadAttachmentUsageTable() {
-                $('.spinner').show();
+                $('.attachment-usage-spinner').show();
                 let attachmentUsageRows = await loadAttachmentUsageOnClick();
                 attachmentUsageRows = attachmentUsageRows.replace(/\s+/g,' ').trim();
                 $("#AttachmentUsagesInfo tbody").html("").html(attachmentUsageRows);
                 setupAttachmentUsageTable();
-                $('.spinner').hide();
+                $('.attachment-usage-spinner').hide();
             }
 
             function setupAttachmentUsageTable() {

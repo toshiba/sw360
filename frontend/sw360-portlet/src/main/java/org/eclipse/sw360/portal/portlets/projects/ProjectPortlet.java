@@ -300,7 +300,7 @@ public class ProjectPortlet extends FossologyAwarePortlet {
         } else if (VIEW_DEPARTMENT.equals(action)) {
             serveViewDepartment(request, response);
         } else if (ATTACHMENT_USAGE_ON_CLICK.equals(action)) {
-            serverAttachmentUsageOnClick(request, response);
+            serveAttachmentUsageOnClick(request, response);
         }
     }
 
@@ -3557,7 +3557,7 @@ public class ProjectPortlet extends FossologyAwarePortlet {
         }
     }
 
-    private void serverAttachmentUsageOnClick(ResourceRequest request, ResourceResponse response) throws PortletException, IOException{
+    private void serveAttachmentUsageOnClick(ResourceRequest request, ResourceResponse response) throws PortletException, IOException {
         final User user = UserCacheHolder.getUserFromRequest(request);
         String projectId = request.getParameter(PROJECT_ID);
         List<ProjectLink> mappedProjectLinks = new ArrayList<>();
