@@ -1693,7 +1693,9 @@ public class ProjectPortlet extends FossologyAwarePortlet {
                     }
                 }
                 List<ProjectLink> listSubProjectLinksTransitive = SW360Utils.getLinkedProjectsTransitive(project, user);
-                request.setAttribute(SUB_PROJECTS_LINK_TRANSITIVE, listSubProjectLinksTransitive);
+                Collection<ProjectLink> uniqueProjectLinksTransitive = listSubProjectLinksTransitive.stream().collect(
+                        Collectors.toMap(ProjectLink::getId, Function.identity(), (oldValue, newValue) -> oldValue)).values();
+                request.setAttribute(SUB_PROJECTS_LINK_TRANSITIVE, uniqueProjectLinksTransitive);
             } catch (SW360Exception sw360Exp) {
                 setSessionErrorBasedOnErrorCode(request, sw360Exp.getErrorCode());
             } catch (TException e) {
