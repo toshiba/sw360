@@ -24,10 +24,12 @@ import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectType;
 import org.eclipse.sw360.datahandler.thrift.users.User;
+import org.eclipse.sw360.datahandler.thrift.vulnerabilities.VulnerabilityDTO;
 import org.eclipse.sw360.rest.resourceserver.TestHelper;
 import org.eclipse.sw360.rest.resourceserver.attachment.Sw360AttachmentService;
 import org.eclipse.sw360.rest.resourceserver.component.Sw360ComponentService;
 import org.eclipse.sw360.rest.resourceserver.user.Sw360UserService;
+import org.eclipse.sw360.rest.resourceserver.vulnerability.Sw360VulnerabilityService;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,6 +77,9 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
 
     @MockBean
     private Sw360AttachmentService attachmentServiceMock;
+
+    @MockBean
+    private Sw360VulnerabilityService vulnerabilityServiceMock;
 
     private Component angularComponent;
 
@@ -242,6 +247,29 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
         release2.setModerators(new HashSet<>(Arrays.asList("admin@sw360.org", "jane@sw360.org")));
         release2.setComponentId(springComponent.getId());
         releaseList.add(release2);
+
+        List<VulnerabilityDTO> vulDtos = new ArrayList<VulnerabilityDTO>();
+        VulnerabilityDTO vulDto = new VulnerabilityDTO();
+        vulDto.setComment("Lorem Ipsum");
+        vulDto.setExternalId("12345");
+        vulDto.setProjectRelevance("IRRELEVANT");
+        vulDto.setIntReleaseId("3765276512");
+        vulDto.setIntReleaseName("Angular 2.3.0");
+        vulDto.setAction("Update to Fixed Version");
+        vulDto.setPriority("2 - major");
+        vulDtos.add(vulDto);
+
+        VulnerabilityDTO vulDto1 = new VulnerabilityDTO();
+        vulDto1.setComment("Lorem Ipsum");
+        vulDto1.setExternalId("23105");
+        vulDto1.setProjectRelevance("APPLICABLE");
+        vulDto1.setIntReleaseId("3765276512");
+        vulDto1.setIntReleaseName("Angular 2.3.0");
+        vulDto1.setAction("Update to Fixed Version");
+        vulDto1.setPriority("1 - critical");
+        vulDtos.add(vulDto1);
+
+        given(this.componentServiceMock.getVulnerabilitiesByComponent(any(), any())).willReturn(vulDtos);
 
         angularComponent.setReleases(releaseList);
     }
@@ -691,5 +719,25 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
                         fieldWithPath("setVisbility").description("The visibility of the component"),
                         fieldWithPath("setBusinessUnit").description("Whether or not a business unit is set for the component")
                 ));
+    }
+
+    @Test
+    public void should_document_get_component_vulnerabilities() throws Exception {
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(get("/api/components/" + angularComponent.getId()+ "/vulnerabilities")
+                        .contentType(MediaTypes.HAL_JSON)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .accept(MediaTypes.HAL_JSON))
+                        .andExpect(status().isOk())
+                        .andDo(this.documentationHandler.document(
+                            links(
+                                    linkWithRel("curies").description("Curies are used for online documentation")
+                            ),
+                            responseFields(
+                                    subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]externalId").description("The external Id of the vulnerability"),
+                                    subsectionWithPath("_embedded.sw360:vulnerabilityDTOes").description("An array of <<resources-vulnerabilities, Vulnerabilities resources>>"),
+                                    subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                            )
+                        ));
     }
 }

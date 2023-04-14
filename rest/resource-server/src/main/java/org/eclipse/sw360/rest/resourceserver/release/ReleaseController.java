@@ -208,16 +208,11 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
     }
 
     @GetMapping(value = RELEASES_URL + "/{id}/vulnerabilities")
-    public ResponseEntity<CollectionModel<EntityModel<Vulnerability>>> getVulnerabilitiesOfReleases(
+    public ResponseEntity<CollectionModel<VulnerabilityDTO>> getVulnerabilitiesOfReleases(
             @PathVariable("id") String id) throws TException {
         User user = restControllerHelper.getSw360UserFromAuthentication();
         final List<VulnerabilityDTO> allVulnerabilityDTOs = vulnerabilityService.getVulnerabilitiesByReleaseId(id, user);
-        List<EntityModel<Vulnerability>> vulnerabilityResources = new ArrayList<>();
-        allVulnerabilityDTOs.forEach(v -> {
-            Vulnerability vulnerability = restControllerHelper.convertToEmbeddedVulnerability(v);
-            vulnerabilityResources.add(EntityModel.of(vulnerability));
-        });
-        CollectionModel<EntityModel<Vulnerability>> resources = CollectionModel.of(vulnerabilityResources);
+        CollectionModel<VulnerabilityDTO> resources = CollectionModel.of(allVulnerabilityDTOs);
         return new ResponseEntity<>(resources,HttpStatus.OK);
     }
     
