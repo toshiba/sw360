@@ -366,7 +366,7 @@ struct ReleaseLink{
     22: required bool hasSubreleases,
     25: optional string nodeId,
     26: optional string parentNodeId,
-
+    27: optional string clearingReport,
     31: optional ClearingState clearingState,
     32: optional list<Attachment> attachments,
     33: optional ComponentType componentType,
@@ -707,6 +707,8 @@ service ComponentService {
      * get summaries of releases of component specified by id, filled with permissions for user
      **/
     list<Release> getReleasesByComponentId(1: string id, 2: User user);
+
+    list<Release> getReleaseByComponentId(1: string id, 2: User user);
 
     /**
      * get components belonging to linked releases of the release specified by releaseId

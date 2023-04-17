@@ -68,6 +68,7 @@ public class JacksonCustomizations {
             setMixInAnnotation(User.class, Sw360Module.UserMixin.class);
             setMixInAnnotation(Component.class, Sw360Module.ComponentMixin.class);
             setMixInAnnotation(Release.class, Sw360Module.ReleaseMixin.class);
+            setMixInAnnotation(ReleaseLink.class, Sw360Module.ReleaseLinkMixin.class);
             setMixInAnnotation(Attachment.class, Sw360Module.AttachmentMixin.class);
             setMixInAnnotation(Vendor.class, Sw360Module.VendorMixin.class);
             setMixInAnnotation(License.class, Sw360Module.LicenseMixin.class);
@@ -483,6 +484,53 @@ public class JacksonCustomizations {
             @Override
             @JsonProperty("eccInformation")
             abstract public EccInformation getEccInformation();
+        }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties({
+                "vendor",
+                "longName",
+                "releaseRelationship",
+                "hasSubreleases",
+                "nodeId",
+                "parentNodeId",
+                "componentType",
+                "licenseIds",
+                "licenseNames",
+                "comment",
+                "otherLicenseIds",
+                "accessible",
+                "attachmentsSize",
+                "setName",
+                "setVersion",
+                "setComponentType",
+                "attachmentsIterator",
+                "setAttachments",
+                "setMainlineState",
+                "setClearingState",
+                "otherLicenseIdsSize",
+                "otherLicenseIdsIterator",
+                "setOtherLicenseIds",
+                "setVendor",
+                "setComment",
+                "setNodeId",
+                "setParentNodeId",
+                "setLongName",
+                "setReleaseRelationship",
+                "setHasSubreleases",
+                "licenseIdsSize",
+                "licenseIdsIterator",
+                "setLicenseIds",
+                "licenseNamesSize",
+                "licenseNamesIterator",
+                "setLicenseNames",
+                "setAccessible",
+                "setId",
+                "setClearingReport"
+
+        })
+        static abstract class ReleaseLinkMixin {
+
         }
 
         @JsonInclude(JsonInclude.Include.NON_NULL)

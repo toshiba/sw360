@@ -23,8 +23,11 @@ import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestStatus;
 import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestSummary;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
+import org.eclipse.sw360.datahandler.thrift.components.ReleaseLink;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectService;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
@@ -39,9 +42,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.eclipse.sw360.datahandler.common.CommonUtils.getSortedMap;
 
@@ -168,6 +170,42 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
         return sw360ComponentClient.searchComponentForExport(name.toLowerCase(), false);
     }
 
+    public List<Release> getReleasesByComponentId(String id,User user) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        return sw360ComponentClient.getReleaseByComponentId(id, user);
+    }
+
+    public List<ReleaseLink> convertReleaseToReleaseLink(String id,User user) throws TException {
+        List<Release> releases = getReleasesByComponentId(id,user);
+        List<ReleaseLink> releaseLinks = new ArrayList<>();
+        releases.forEach(release -> {
+            ReleaseLink releaseLink =new ReleaseLink();
+            releaseLink.setId(release.getId());
+            releaseLink.setName(release.getName());
+            releaseLink.setVersion(release.getVersion());
+            releaseLink.setClearingState(release.getClearingState());
+            boolean checkTypeAttachment = checkAttachmentType(release);
+            if (checkTypeAttachment) {
+                releaseLink.setClearingReport("no report");
+            } else {
+                releaseLink.setClearingReport("");
+            }
+            releaseLink.setMainlineState(release.getMainlineState());
+            releaseLinks.add(releaseLink);
+        });
+
+        return releaseLinks;
+    }
+
+    private Boolean checkAttachmentType(Release release){
+        Set<Attachment> attachments = release.getAttachments();
+        long count = attachments.stream().filter(attachment ->
+                                                AttachmentType.COMPONENT_LICENSE_INFO_XML.equals(attachment.getAttachmentType()) ||
+                                                AttachmentType.CLEARING_REPORT.equals(attachment.getAttachmentType()))
+                                        .count();
+        return count > 0 ? true : false ;
+    }
+
     private ComponentService.Iface getThriftComponentClient() throws TTransportException {
         THttpClient thriftClient = new THttpClient(thriftServerUrl + "/components/thrift");
         TProtocol protocol = new TCompactProtocol(thriftClient);
@@ -179,4 +217,5 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
         TProtocol protocol = new TCompactProtocol(thriftClient);
         return new ProjectService.Client(protocol);
     }
+
 }
