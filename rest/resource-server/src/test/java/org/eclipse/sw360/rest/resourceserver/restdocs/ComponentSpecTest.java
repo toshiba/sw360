@@ -13,14 +13,13 @@ package org.eclipse.sw360.rest.resourceserver.restdocs;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.thrift.TException;
+import org.eclipse.sw360.datahandler.thrift.MainlineState;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentContent;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
 import org.eclipse.sw360.datahandler.thrift.attachments.CheckStatus;
-import org.eclipse.sw360.datahandler.thrift.components.Component;
-import org.eclipse.sw360.datahandler.thrift.components.ComponentType;
-import org.eclipse.sw360.datahandler.thrift.components.Release;
+import org.eclipse.sw360.datahandler.thrift.components.*;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectType;
 import org.eclipse.sw360.datahandler.thrift.users.User;
@@ -243,6 +242,28 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
         release2.setComponentId(springComponent.getId());
         releaseList.add(release2);
 
+        List<ReleaseLink> releaseLinks = new ArrayList<>();
+
+        ReleaseLink releaseLink = new ReleaseLink();
+
+        releaseLink.setId("3765276512");
+        releaseLink.setName("Angular 2.3.0");
+        releaseLink.setVersion("2.3.0");
+        releaseLink.setMainlineState(MainlineState.OPEN);
+        releaseLink.setClearingReport("no report");
+        releaseLink.setClearingState(ClearingState.NEW_CLEARING);
+        releaseLinks.add(releaseLink);
+
+        ReleaseLink releaseLink2 = new ReleaseLink();
+        releaseLink2.setId("3765276512");
+        releaseLink2.setName("Angular 2.3.1");
+        releaseLink2.setVersion("2.3.1");
+        releaseLink2.setMainlineState(MainlineState.OPEN);
+        releaseLink2.setClearingReport("");
+        releaseLink2.setClearingState(ClearingState.REPORT_AVAILABLE);
+        releaseLinks.add(releaseLink2);
+
+        given(this.componentServiceMock.convertReleaseToReleaseLink(any(),any())).willReturn(releaseLinks);
         angularComponent.setReleases(releaseList);
     }
 
@@ -580,6 +601,25 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
                                 subsectionWithPath("_embedded.sw360:attachments").description("An array of <<resources-attachment, Attachments resources>>"),
                                 subsectionWithPath("_embedded.sw360:attachments.[]filename").description("The attachment filename"),
                                 subsectionWithPath("_embedded.sw360:attachments.[]sha1").description("The attachment sha1 value"),
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                        )));
+    }
+
+    @Test
+    public void should_document_get_releases_by_component() throws Exception {
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(get("/api/components/" + angularComponent.getId()+ "/releases")
+                        .contentType(MediaTypes.HAL_JSON)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                        links(
+                                linkWithRel("curies").description("Curies are used for online documentation")
+                        ),
+                        responseFields(
+                                subsectionWithPath("_embedded.sw360:releaseLinks.[]id").description("The external Id of the vulnerability"),
+                                subsectionWithPath("_embedded.sw360:releaseLinks").description("An array of <<resources-releases, releases resources>>"),
                                 subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
                         )));
     }
