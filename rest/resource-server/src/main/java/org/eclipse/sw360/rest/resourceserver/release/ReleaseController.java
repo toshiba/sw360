@@ -11,28 +11,32 @@
  */
 package org.eclipse.sw360.rest.resourceserver.release;
 
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.common.SW360Constants;
+import org.eclipse.sw360.datahandler.common.SW360Utils;
+import org.eclipse.sw360.datahandler.common.ThriftEnumUtils;
+import org.eclipse.sw360.datahandler.permissions.DocumentPermissions;
 import org.eclipse.sw360.datahandler.resourcelists.PaginationParameterException;
 import org.eclipse.sw360.datahandler.resourcelists.PaginationResult;
 import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundException;
-import org.eclipse.sw360.datahandler.thrift.ReleaseRelationship;
-import org.eclipse.sw360.datahandler.thrift.RequestStatus;
-import org.eclipse.sw360.datahandler.thrift.Source;
+import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.ExternalToolProcess;
+import org.eclipse.sw360.datahandler.thrift.users.RequestedAction;
 import org.eclipse.sw360.datahandler.thrift.users.User;
+import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
 import org.eclipse.sw360.datahandler.thrift.vendors.Vendor;
-import org.eclipse.sw360.datahandler.thrift.vulnerabilities.Vulnerability;
-import org.eclipse.sw360.datahandler.thrift.vulnerabilities.VulnerabilityDTO;
+import org.eclipse.sw360.datahandler.thrift.vulnerabilities.*;
 import org.eclipse.sw360.rest.resourceserver.attachment.AttachmentInfo;
 import org.eclipse.sw360.rest.resourceserver.attachment.Sw360AttachmentService;
 import org.eclipse.sw360.rest.resourceserver.component.ComponentController;
@@ -51,6 +55,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -68,18 +73,17 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static org.eclipse.sw360.datahandler.common.WrappedException.wrapTException;
+import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 
 @BasePathAwareController
@@ -282,6 +286,100 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
             return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
         }
         return new ResponseEntity<>(halRelease, HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('WRITE')")
+    @PatchMapping(value = RELEASES_URL + "/{id}/vulnerabilities")
+    public ResponseEntity<CollectionModel<EntityModel<VulnerabilityDTO>>> patchReleaseVulnerabilityRelation(@PathVariable("id") String releaseId,
+                                                      @RequestBody List<VulnerabilityDTO> vulnerabilityDTOs) throws TException {
+        User user = restControllerHelper.getSw360UserFromAuthentication();
+        // Validate releaseId and externalId
+        Set<String> releaseIdsFromRequestDto = vulnerabilityDTOs.stream().map(VulnerabilityDTO::getIntReleaseId).collect(Collectors.toSet());
+        if (releaseIdsFromRequestDto.size() == 1 && releaseIdsFromRequestDto.contains(releaseId)){
+            List<VulnerabilityDTO> actualVDto = vulnerabilityService.getVulnerabilitiesByReleaseId(releaseId, user);
+            Set<String> externalIdsFromRequestDto = vulnerabilityDTOs.stream().map(VulnerabilityDTO::getExternalId).collect(Collectors.toSet());
+            Set<String> actualExternalId = actualVDto.stream().map(VulnerabilityDTO::getExternalId).collect(Collectors.toSet());
+            Set<String> commonExtIds = Sets.intersection(actualExternalId, externalIdsFromRequestDto);
+            if(CommonUtils.isNullOrEmptyCollection(commonExtIds) || commonExtIds.size() != externalIdsFromRequestDto.size()) {
+                throw new HttpMessageNotReadableException("External ID is not valid");
+            }
+        } else {
+            throw new HttpMessageNotReadableException("Release ID is not valid");
+        }
+
+        // Validate VerificationStateInfo of ReleaseVulnerabilityRelation
+        long count = vulnerabilityDTOs.stream().filter(vulnerabilityDTO -> vulnerabilityDTO.getReleaseVulnerabilityRelation().getVerificationStateInfo().size() != 1).count();
+        if (count !=0 ){
+            throw new HttpMessageNotReadableException("VerificationStateInfo of ReleaseVulnerabilityRelation is not valid");
+        }
+        Map<String, ReleaseVulnerabilityRelation> releasemap = new HashMap<>();
+        Map<String,VulnerabilityDTO> vulnerabilityDTOMap = new HashMap<>();
+        vulnerabilityDTOs.forEach(vulnerabilityDTO -> {
+            releasemap.put(vulnerabilityDTO.getExternalId(),vulnerabilityDTO.getReleaseVulnerabilityRelation());
+            vulnerabilityDTOMap.put(vulnerabilityDTO.getReleaseVulnerabilityRelation().getVulnerabilityId(),vulnerabilityDTO);
+        });
+        List<String> vulnerabilityIds = new ArrayList<>();
+        RequestStatus requestStatus = null;
+        for (Map.Entry<String, ReleaseVulnerabilityRelation> entry : releasemap.entrySet()) {
+            VerificationStateInfo verificationStateInfo = entry.getValue().getVerificationStateInfo().get(0);
+            requestStatus = updateReleaseVulnerabilityRelation(releaseId, user, verificationStateInfo, entry.getKey());
+            if (requestStatus != RequestStatus.SUCCESS) {
+                break;
+            }
+            vulnerabilityIds.add(entry.getValue().getVulnerabilityId());
+        }
+        if (requestStatus == RequestStatus.ACCESS_DENIED){
+            throw new HttpMessageNotReadableException("User not allowed!");
+        }
+        List<VulnerabilityDTO> vulnerabilityDTOList = getVulnerabilityUpdated(vulnerabilityDTOMap,vulnerabilityIds);
+        final List<EntityModel<VulnerabilityDTO>> vulnerabilityResources = new ArrayList<>();
+        vulnerabilityDTOList.forEach(dto->{
+            final EntityModel<VulnerabilityDTO> vulnerabilityDTOEntityModel = EntityModel.of(dto);
+            vulnerabilityResources.add(vulnerabilityDTOEntityModel);
+        });
+        CollectionModel<EntityModel<VulnerabilityDTO>> resources = null;
+        resources = restControllerHelper.createResources(vulnerabilityResources);
+        HttpStatus status = resources == null ? HttpStatus.BAD_REQUEST : HttpStatus.OK;
+        return new ResponseEntity<>(resources, status);
+
+    }
+
+    public RequestStatus updateReleaseVulnerabilityRelation(String releaseId, User user, VerificationStateInfo verificationStateInfo,String externalIdRequest) throws TException {
+        List<VulnerabilityDTO> vulnerabilityDTOS = vulnerabilityService.getVulnerabilitiesByReleaseId(releaseId,user);
+        ReleaseVulnerabilityRelation releaseVulnerabilityRelation = new ReleaseVulnerabilityRelation();
+        for (VulnerabilityDTO vulnerabilityDTO: vulnerabilityDTOS) {
+            if (vulnerabilityDTO.getExternalId().equals(externalIdRequest)) {
+                releaseVulnerabilityRelation = vulnerabilityDTO.getReleaseVulnerabilityRelation();
+            }
+        }
+        ReleaseVulnerabilityRelation relation = updateReleaseVulnerabilityRelationFromRequest(releaseVulnerabilityRelation,verificationStateInfo,user);
+        RequestStatus requestStatus = vulnerabilityService.updateReleaseVulnerabilityRelation(relation,user);
+        return requestStatus;
+    }
+
+    public static ReleaseVulnerabilityRelation updateReleaseVulnerabilityRelationFromRequest(ReleaseVulnerabilityRelation dbRelation, VerificationStateInfo verificationStateInfo,User user) {
+        if (!dbRelation.isSetVerificationStateInfo()) {
+            dbRelation.setVerificationStateInfo(new ArrayList<>());
+        }
+        List<VerificationStateInfo> verificationStateHistory = dbRelation.getVerificationStateInfo();
+        verificationStateInfo.setCheckedBy(user.getEmail());
+        verificationStateInfo.setCheckedOn(SW360Utils.getCreatedOn());
+        verificationStateHistory.add(verificationStateInfo);
+        dbRelation.setVerificationStateInfo(verificationStateHistory);
+
+        return dbRelation;
+    }
+
+    public List<VulnerabilityDTO> getVulnerabilityUpdated(Map<String,VulnerabilityDTO> vulnerabilityDTOMap,List<String> vulnerabilityIds ){
+        List<VulnerabilityDTO> vulnerabilityDTOList = new ArrayList<>() ;
+        for (Map.Entry<String, VulnerabilityDTO> entry : vulnerabilityDTOMap.entrySet()) {
+            for (String idVulnerability: vulnerabilityIds) {
+                if (entry.getKey().equals(idVulnerability)){
+                    vulnerabilityDTOList.add(entry.getValue());
+                }
+            }
+        }
+        return vulnerabilityDTOList;
     }
 
     @PreAuthorize("hasAuthority('WRITE')")

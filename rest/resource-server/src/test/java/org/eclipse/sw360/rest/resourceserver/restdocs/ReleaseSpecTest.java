@@ -49,6 +49,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.CollectionModel;
+import org.springframework.http.MediaType;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.LinkedMultiValueMap;
@@ -329,6 +330,20 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
         releaseIdToRelationship1 = ImmutableMap.of(release2.getId(), ReleaseRelationship.DYNAMICALLY_LINKED, release3.getId(), ReleaseRelationship.CONTAINED);
 
         List<VulnerabilityDTO> vulDtos = new ArrayList<VulnerabilityDTO>();
+        VerificationStateInfo verificationStateInfo = new VerificationStateInfo();
+        verificationStateInfo.setCheckedBy("user@sw360.org");
+        verificationStateInfo.setCheckedOn("2016-12-18");
+        verificationStateInfo.setComment("Change status");
+        verificationStateInfo.setVerificationState(VerificationState.CHECKED);
+
+        List<VerificationStateInfo> verificationStateInfos2 = new ArrayList<>();
+        verificationStateInfos2.add(verificationStateInfo);
+
+        ReleaseVulnerabilityRelation relation1 = new ReleaseVulnerabilityRelation();
+        relation1.setReleaseId(releaseId);
+        relation1.setVulnerabilityId("1333333333");
+        relation1.setVerificationStateInfo(verificationStateInfos2);
+
         VulnerabilityDTO vulDto = new VulnerabilityDTO();
         vulDto.setComment("Lorem Ipsum");
         vulDto.setExternalId("12345");
@@ -337,19 +352,39 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
         vulDto.setIntReleaseName("Angular 2.3.0");
         vulDto.setAction("Update to Fixed Version");
         vulDto.setPriority("2 - major");
+        vulDto.setReleaseVulnerabilityRelation(relation1);
+
         vulDtos.add(vulDto);
+
+        VerificationStateInfo verificationStateInfo1 = new VerificationStateInfo();
+        verificationStateInfo1.setCheckedBy("admin@sw360.org");
+        verificationStateInfo1.setCheckedOn("2016-12-19");
+        verificationStateInfo1.setComment("Change status");
+        verificationStateInfo1.setVerificationState(VerificationState.NOT_CHECKED);
+        List<VerificationStateInfo> verificationStateInfos1 = new ArrayList<>();
+        verificationStateInfos1.add(verificationStateInfo1);
+
+        ReleaseVulnerabilityRelation relation = new ReleaseVulnerabilityRelation();
+        relation.setReleaseId(releaseId);
+        relation.setVulnerabilityId("1222222222");
+        relation.setVerificationStateInfo(verificationStateInfos1);
 
         VulnerabilityDTO vulDto1 = new VulnerabilityDTO();
         vulDto1.setComment("Lorem Ipsum");
         vulDto1.setExternalId("23105");
-        vulDto1.setProjectRelevance("APPLICABLE");
         vulDto1.setIntReleaseId("3765276512");
         vulDto1.setIntReleaseName("Angular 2.3.0");
         vulDto1.setAction("Update to Fixed Version");
         vulDto1.setPriority("1 - critical");
+        vulDto1.setReleaseVulnerabilityRelation(relation);
         vulDtos.add(vulDto1);
 
         given(this.vulnerabilityServiceMock.getVulnerabilitiesByReleaseId(any(), any())).willReturn(vulDtos);
+        given(this.vulnerabilityServiceMock.updateReleaseVulnerabilityRelation(any(), any())).willReturn(RequestStatus.SUCCESS);
+
+//
+//        vulDto.setReleaseVulnerabilityRelation(relation);
+//        vulDto1.setReleaseVulnerabilityRelation(relation1);
     }
     @Test
     public void should_document_get_releases() throws Exception {
@@ -821,6 +856,65 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
                         responseFields(
                                 subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]externalId").description("The external Id of the vulnerability"),
                                 subsectionWithPath("_embedded.sw360:vulnerabilityDTOes").description("An array of <<resources-vulnerabilities, Vulnerabilities resources>>"),
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                        )));
+    }
+
+    @Test
+    public void should_document_update_release_vulnerabilities() throws Exception {
+
+        List<VulnerabilityDTO> vulnerabilityDTOList = new ArrayList<>();
+        VerificationStateInfo verificationStateInfo = new VerificationStateInfo();
+        verificationStateInfo.setCheckedBy("admin@sw360.org");
+        verificationStateInfo.setCheckedOn("2018-12-18");
+        verificationStateInfo.setComment("Change status");
+        verificationStateInfo.setVerificationState(VerificationState.NOT_CHECKED);
+
+        List<VerificationStateInfo> verificationStateInfos1 = new ArrayList<>();
+        verificationStateInfos1.add(verificationStateInfo);
+
+        ReleaseVulnerabilityRelation relation = new ReleaseVulnerabilityRelation();
+        relation.setReleaseId(releaseId);
+        relation.setVulnerabilityId("1333333333");
+        relation.setVerificationStateInfo(verificationStateInfos1);
+
+        VulnerabilityDTO vulDto = new VulnerabilityDTO();
+        vulDto.setComment("Lorem Ipsum");
+        vulDto.setExternalId("12345");
+        vulDto.setIntReleaseId(releaseId);
+        vulDto.setIntReleaseName("Angular 2.3.0");
+        vulDto.setAction("Update to Fixed Version");
+        vulDto.setPriority("2 - major");
+        vulDto.setReleaseVulnerabilityRelation(relation);
+        vulnerabilityDTOList.add(vulDto);
+
+
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(patch("/api/releases/" + releaseId + "/vulnerabilities")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(this.objectMapper.writeValueAsString(vulnerabilityDTOList))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                        links(
+                                linkWithRel("curies").description("Curies are used for online documentation")
+                        ),
+                        responseFields(
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]externalId").description("The ReleaseVulnerabilityRelation of release of the vulnerability, possible values are: "),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]intReleaseId").description("The release id"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]comment").description("Any message to add while updating releases vulnerabilities"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]projectAction").description("The action of vulnerability"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation").description("The releaseVulnerabilityRelation of vulnerability"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.vulnerabilityId").description("The vulnerabilityId of releaseVulnerabilityRelation"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.releaseId").description("The releaseId of releaseVulnerabilityRelation"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.verificationStateInfo.[]checkedOn").description("The checkedOn of verificationStateInfo"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.verificationStateInfo.[]checkedBy").description("The checkedBy of verificationStateInfo"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.verificationStateInfo.[]comment").description("The comment of verificationStateInfo"),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation.verificationStateInfo.[]verificationState").description("The verificationState of verificationStateInfo " +  Arrays.asList(VerificationState.values())),
+                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes").description("An array of <<resources-vulnerabilities, Vulnerability resources>>"),
+//                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.[]releaseVulnerabilityRelation").description("An Object of releaseVulnerabilityRelation"),
+//                                subsectionWithPath("_embedded.sw360:vulnerabilityDTOes.releaseVulnerabilityRelation.verificationStateInfo").description("An array of releaseVulnerabilityRelation"),
                                 subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
                         )));
     }
