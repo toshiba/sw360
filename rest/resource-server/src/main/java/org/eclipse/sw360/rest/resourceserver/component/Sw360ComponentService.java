@@ -20,9 +20,7 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.THttpClient;
 import org.apache.thrift.transport.TTransportException;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
-import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestStatus;
-import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestSummary;
-import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
@@ -32,11 +30,13 @@ import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.Sw360ResourceServer;
 import org.eclipse.sw360.rest.resourceserver.core.AwareOfRestServices;
 import org.eclipse.sw360.rest.resourceserver.core.RestControllerHelper;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.eclipse.sw360.rest.resourceserver.project.Sw360ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -76,10 +76,18 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
 
     public Component getComponentForUserById(String componentId, User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
-        Component component = sw360ComponentClient.getComponentById(componentId, sw360User);
-        Map<String, String> sortedAdditionalData = getSortedMap(component.getAdditionalData(), true);
-        component.setAdditionalData(sortedAdditionalData);
-        return component;
+        try {
+            Component component = sw360ComponentClient.getComponentById(componentId, sw360User);
+            Map<String, String> sortedAdditionalData = getSortedMap(component.getAdditionalData(), true);
+            component.setAdditionalData(sortedAdditionalData);
+            return component;
+        } catch (SW360Exception sw360Exp) {
+            if (sw360Exp.getErrorCode() == 404) {
+                throw new ResourceNotFoundException("Requested Component Not Found");
+            } else {
+                throw sw360Exp;
+            }
+        }
     }
 
     public Set<Project> getProjectsByComponentId(String componentId, User sw360User) throws TException {
@@ -183,5 +191,10 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
     public List<Component> getMyComponentsForUser(User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
         return sw360ComponentClient.getMyComponents(sw360User);
+    }
+
+    public RequestSummary importSBOM(User user, String attachmentContentId) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        return sw360ComponentClient.importBomFromAttachmentContent(user, attachmentContentId);
     }
 }

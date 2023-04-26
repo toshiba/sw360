@@ -346,3 +346,37 @@ include::{snippets}/should_document_get_mycomponents_components/http-response.ad
 
 ===== Links
 include::{snippets}/should_document_get_mycomponents_components/links.adoc[]
+
+[[resources-import-sbom-components]]
+==== Import SBOM Component
+
+A `POST` request is used to import SBOM in SPDX format.
+
+[red]#Request parameters#
+|===
+|Parameter |Description
+
+|type
+|File type of SBOM
+|===
+
+[red]#Request structure#
+|===
+Type |Description
+
+|file
+|Path of the SBOM file
+|===
+
+
+[red]#Response structure#
+|===
+|Complete Component will be returned
+|===
+
+===== Example request
+include::{snippets}/should_document_import_sbom_for_component/curl-request.adoc[]
+
+===== Example response
+include::{snippets}/should_document_import_sbom_for_component/http-response.adoc[]
+

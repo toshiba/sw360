@@ -14,6 +14,7 @@ package org.eclipse.sw360.rest.resourceserver.restdocs;
 import com.google.common.collect.ImmutableSet;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.RequestSummary;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentContent;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
@@ -37,8 +38,12 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.CollectionModel;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -81,6 +86,10 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
     private Attachment attachment;
 
     private Project project;
+
+    private Component sBOMComponent;
+    private Attachment sBOMAttachment;
+    private RequestSummary requestSummary = new RequestSummary();
 
     @Before
     public void before() throws TException, IOException {
@@ -245,6 +254,36 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
         releaseList.add(release2);
 
         angularComponent.setReleases(releaseList);
+
+        sBOMAttachment = new Attachment("3331231254", "bom.spdx.rdf");
+        sBOMAttachment.setSha1("df903e491d3863477568896089ee9457bc316183");
+        sBOMAttachment.setAttachmentType(AttachmentType.SBOM);
+        Set<Attachment> sbomSet = new HashSet<>();
+        sbomSet.add(sBOMAttachment);
+
+        sBOMComponent = new Component();
+        sBOMComponent.setId("333655");
+        sBOMComponent.setName("Maven");
+        sBOMComponent.setCreatedOn("2022-11-13");
+        sBOMComponent.setBusinessUnit("sw360 BA");
+        sBOMComponent.setComponentType(ComponentType.SERVICE);
+        sBOMComponent.setCreatedBy("admin@sw360.org");
+        sBOMComponent.setAttachments(sbomSet);
+
+        Release release1 = new Release();
+        release1.setId("333655111");
+        release1.setComponentId("333655");
+        release1.setName("Green Web");
+        release1.setCreatedOn("2022-11-13");
+        release1.setComponentType(ComponentType.SERVICE);
+        release1.setCreatedBy("admin@sw360.org");
+
+        requestSummary.setMessage(sBOMComponent.getId());
+        requestSummary.setRequestStatus(RequestStatus.SUCCESS);
+
+        given(this.componentServiceMock.importSBOM(any(),any())).willReturn(requestSummary);
+        given(this.componentServiceMock.getReleaseById(any(),any())).willReturn(release1);
+        given(this.componentServiceMock.getComponentForUserById(eq(sBOMComponent.getId()), any())).willReturn(sBOMComponent);
     }
 
     @Test
@@ -713,5 +752,17 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
                                         .description("An array of <<resources-components, Components resources>>"),
                                 subsectionWithPath("_links")
                                         .description("<<resources-index-links,Links>> to other resources"))));
+    }
+
+    @Test
+    public void should_document_import_sbom_for_component() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file","file=@/bom.spdx.rdf".getBytes());
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.post("/api/components/import/SBOM")
+                .content(file.getBytes())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .header("Authorization", "Bearer " + accessToken)
+                .queryParam("type", "SPDX");
+        this.mockMvc.perform(builder).andExpect(status().isOk()).andDo(this.documentationHandler.document());
     }
 }
