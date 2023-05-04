@@ -32,6 +32,7 @@ import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.Sw360ResourceServer;
 import org.eclipse.sw360.rest.resourceserver.core.AwareOfRestServices;
 import org.eclipse.sw360.rest.resourceserver.core.RestControllerHelper;
+import org.eclipse.sw360.rest.resourceserver.vulnerability.Sw360VulnerabilityService;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.eclipse.sw360.rest.resourceserver.project.Sw360ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +58,9 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
 
     @NonNull
     private final Sw360ProjectService projectService;
+
+    @NonNull
+    private final Sw360VulnerabilityService vulnerabilityService;
 
     public List<Component> getComponentsForUser(User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
@@ -183,5 +188,10 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
     public List<Component> getMyComponentsForUser(User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
         return sw360ComponentClient.getMyComponents(sw360User);
+    }
+
+    public List<String> getReleaseIdsFromComponentId(String componentId, User user) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        return sw360ComponentClient.getReleaseIdsFromComponentId(componentId, user);
     }
 }
