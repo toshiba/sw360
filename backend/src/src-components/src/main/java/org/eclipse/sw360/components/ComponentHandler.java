@@ -186,7 +186,7 @@ public class ComponentHandler implements ComponentService.Iface {
     ////////////////////////////
 
     @Override
-    public Component getComponentById(String id, User user) throws TException {
+    public Component getComponentById(String id, User user) throws SW360Exception {
         assertId(id);
         assertUser(user);
 

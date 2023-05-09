@@ -328,9 +328,8 @@ public class ComponentDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
     public Component getComponent(String id, User user) throws SW360Exception {
         Component component = componentRepository.get(id);
-
         if (component == null) {
-            throw fail("Could not fetch component from database! id=" + id);
+            throw fail(404, "Could not fetch component from database! id=" + id);
         }
 
         // Convert Ids to release summary
