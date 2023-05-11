@@ -12,6 +12,7 @@
 
 package org.eclipse.sw360.rest.resourceserver.component;
 
+import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.common.SW360Constants;
 import org.eclipse.sw360.datahandler.resourcelists.PaginationParameterException;
 import org.eclipse.sw360.datahandler.resourcelists.PaginationResult;
@@ -296,7 +297,11 @@ public class ComponentController implements RepresentationModelProcessor<Reposit
     public ResponseEntity<CollectionModel<ReleaseLink>> getReleaseLinksByComponentId(
             @PathVariable("id") String id) throws TException {
         final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
-        final List<ReleaseLink> releaseLinks = componentService.convertReleaseToReleaseLink(id, sw360User);
+        Component component = componentService.getComponentForUserById(id,sw360User);
+        final List<ReleaseLink> releaseLinks = componentService.convertReleaseToReleaseLink(component.getId(), sw360User);
+        if (CommonUtils.isNullOrEmptyCollection(releaseLinks)){
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
         CollectionModel<ReleaseLink> resources = CollectionModel.of(releaseLinks);
         return new ResponseEntity<>(resources, HttpStatus.OK);
     }

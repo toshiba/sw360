@@ -23,6 +23,7 @@ import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestStatus;
 import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestSummary;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
@@ -35,6 +36,7 @@ import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.Sw360ResourceServer;
 import org.eclipse.sw360.rest.resourceserver.core.AwareOfRestServices;
 import org.eclipse.sw360.rest.resourceserver.core.RestControllerHelper;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.eclipse.sw360.rest.resourceserver.project.Sw360ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,9 +80,18 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
 
     public Component getComponentForUserById(String componentId, User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
-        Component component = sw360ComponentClient.getComponentById(componentId, sw360User);
-        Map<String, String> sortedAdditionalData = getSortedMap(component.getAdditionalData(), true);
-        component.setAdditionalData(sortedAdditionalData);
+        Component component = null;
+        try {
+            component = sw360ComponentClient.getComponentById(componentId, sw360User);
+            Map<String, String> sortedAdditionalData = getSortedMap(component.getAdditionalData(), true);
+            component.setAdditionalData(sortedAdditionalData);
+        } catch (SW360Exception sw360Exp) {
+            if (sw360Exp.getErrorCode() == 404) {
+                throw new ResourceNotFoundException("Component does not exists! id=" + componentId);
+            } else {
+                throw sw360Exp;
+            }
+        }
         return component;
     }
 
