@@ -78,19 +78,10 @@ public class Sw360ComponentService implements AwareOfRestServices<Component> {
 
     public Component getComponentForUserById(String componentId, User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
-        Component componentById = null;
-        try {
-            componentById = sw360ComponentClient.getComponentById(componentId, sw360User);
-            Map<String, String> sortedAdditionalData = getSortedMap(componentById.getAdditionalData(), true);
-            componentById.setAdditionalData(sortedAdditionalData);
-        } catch (SW360Exception sw360Exp) {
-            if (sw360Exp.getErrorCode() == 404) {
-                throw new ResourceNotFoundException("Component does not exists! id=" + componentId);
-            } else {
-                throw sw360Exp;
-            }
-        }
-        return componentById;
+        Component component = sw360ComponentClient.getComponentById(componentId, sw360User);
+        Map<String, String> sortedAdditionalData = getSortedMap(component.getAdditionalData(), true);
+        component.setAdditionalData(sortedAdditionalData);
+        return component;
     }
 
     public Set<Project> getProjectsByComponentId(String componentId, User sw360User) throws TException {
