@@ -25,6 +25,8 @@ import org.eclipse.sw360.datahandler.thrift.ReleaseRelationship;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.Source;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentDTO;
+import org.eclipse.sw360.datahandler.thrift.attachments.UsageAttachment;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
@@ -349,6 +351,29 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         final Release sw360Release = releaseService.getReleaseForUserById(id, sw360User);
         final CollectionModel<EntityModel<Attachment>> resources = attachmentService.getResourcesFromList(sw360Release.getAttachments());
         return new ResponseEntity<>(resources, HttpStatus.OK);
+    }
+
+    @GetMapping(value = RELEASES_URL + "/{id}/attachments/tests")
+    public ResponseEntity<?> getReleaseAttachmentsTests(
+            @PathVariable("id") String id) throws TException {
+
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        final Release sw360Release = releaseService.getReleaseForUserById(id, sw360User);
+        Map<Attachment, UsageAttachment> setAttachmentsInRequest = attachmentService.setAttachmentsInRequest(sw360User, sw360Release.getAttachments(), Source.releaseId(sw360Release.getId()));
+        List<AttachmentDTO> attachmentDTOS = new ArrayList<>();
+        Set<Attachment> attachments = sw360Release.getAttachments();
+
+        setAttachmentsInRequest.entrySet().stream().forEach(attachmentUsageEntry -> {
+            attachments.remove(attachmentUsageEntry.getKey());
+            attachmentDTOS.add(attachmentService.convertAttachmentToAttachmentDTO(attachmentUsageEntry.getKey(),attachmentUsageEntry.getValue()));
+        });
+        attachments.forEach(attachment -> {
+            attachmentDTOS.add(attachmentService.convertAttachmentToAttachmentDTO(attachment,new UsageAttachment()));
+        });
+
+        final CollectionModel<EntityModel<AttachmentDTO>> resources = attachmentService.getAttachmentDTOResourcesFromList(attachmentDTOS.stream().collect(Collectors.toSet()));
+        HttpStatus status = resources == null ? HttpStatus.BAD_REQUEST : HttpStatus.OK;
+        return new ResponseEntity<>(resources, status);
     }
 
     @PreAuthorize("hasAuthority('WRITE')")

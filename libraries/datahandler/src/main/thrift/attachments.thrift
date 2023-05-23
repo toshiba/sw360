@@ -74,6 +74,40 @@ struct Attachment {
     23: optional string superAttachmentFilename
 }
 
+struct AttachmentDTO {
+    // TODO mcj check for tests for added fields on 20151021
+    1: required string attachmentContentId,
+    5: required string filename,
+    6: optional string sha1,
+
+    10: optional AttachmentType attachmentType,
+
+    11: optional string createdBy, // should be e-mail
+    12: optional string createdTeam, // team name
+    13: optional string createdComment,
+    14: optional string createdOn,
+    15: optional string checkedBy, // should be e-mail
+    16: optional string checkedTeam, // team name
+    17: optional string checkedComment, // team name
+    18: optional string checkedOn, // strange to have string, but thrift?
+
+    20: optional set<string> uploadHistory, // just for importing data by now
+    21: optional CheckStatus checkStatus; // simple status of checks
+    22: optional string superAttachmentId,
+    23: optional string superAttachmentFilename,
+    24: optional UsageAttachment usage;
+}
+
+struct UsageAttachment {
+    1: optional string id,
+    2: optional string revision,
+    3: optional string type = "usage",
+
+    10: optional i64 visible;
+    11: optional i64 retricted,
+    12: optional set<string> projectName
+}
+
 struct AttachmentContent {
     1: optional string id,
     2: optional string revision,
@@ -282,6 +316,13 @@ service AttachmentService {
      * is used for the filter.
      */
     list<AttachmentUsage> getUsedAttachments(1: Source usedBy, 2: UsageData filter);
+
+    /**
+     * Returns the list of usage objects describing the usage of all attachments used by the given source.
+     * Optionally filtered  by usage type. If a usage data object is given with a value, the type of the value
+     * is used for the filter.
+     */
+    list<AttachmentUsage> getUsedAttachmentsById(1: string attachmentId);
 
     /**
      * Returns attachments based on its attachmentContentId value

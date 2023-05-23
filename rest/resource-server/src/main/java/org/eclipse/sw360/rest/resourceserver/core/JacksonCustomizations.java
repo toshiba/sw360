@@ -26,6 +26,8 @@ import org.eclipse.sw360.datahandler.thrift.ProjectReleaseRelationship;
 import org.eclipse.sw360.datahandler.thrift.VerificationStateInfo;
 import org.eclipse.sw360.datahandler.thrift.Visibility;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentDTO;
+import org.eclipse.sw360.datahandler.thrift.attachments.UsageAttachment;
 import org.eclipse.sw360.datahandler.thrift.changelogs.ChangeLogs;
 import org.eclipse.sw360.datahandler.thrift.changelogs.ChangedFields;
 import org.eclipse.sw360.datahandler.thrift.changelogs.ReferenceDocData;
@@ -81,6 +83,8 @@ public class JacksonCustomizations {
             setMixInAnnotation(Component.class, Sw360Module.ComponentMixin.class);
             setMixInAnnotation(Release.class, Sw360Module.ReleaseMixin.class);
             setMixInAnnotation(Attachment.class, Sw360Module.AttachmentMixin.class);
+            setMixInAnnotation(AttachmentDTO.class, Sw360Module.AttachmentDTOMixin.class);
+            setMixInAnnotation(UsageAttachment.class, Sw360Module.UsageAttachmentMixin.class);
             setMixInAnnotation(Vendor.class, Sw360Module.VendorMixin.class);
             setMixInAnnotation(License.class, Sw360Module.LicenseMixin.class);
             setMixInAnnotation(Obligation.class, Sw360Module.ObligationMixin.class);
@@ -524,6 +528,48 @@ public class JacksonCustomizations {
                 "setSuperAttachmentFilename"
         })
         static abstract class AttachmentMixin {
+        }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties({
+                "setUsage",
+                "setAttachmentContentId",
+                "setFilename",
+                "setSha1",
+                "setAttachmentType",
+                "setCreatedBy",
+                "setCreatedTeam",
+                "setCreatedComment",
+                "setCreatedOn",
+                "setCheckedBy",
+                "setCheckedTeam",
+                "setCheckedComment",
+                "setCheckedOn",
+                "uploadHistorySize",
+                "uploadHistoryIterator",
+                "setUploadHistory",
+                "setCheckStatus",
+                "setSuperAttachmentId",
+                "setSuperAttachmentFilename"
+        })
+        static abstract class AttachmentDTOMixin {
+        }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties({
+                "id",
+                "revision",
+                "type",
+                "setVisible",
+                "setRetricted",
+                "projectNameSize",
+                "projectNameIterator",
+                "setProjectName",
+                "setRevision",
+                "setType",
+                "setId",
+        })
+        static abstract class UsageAttachmentMixin {
         }
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
