@@ -25,6 +25,7 @@ import org.eclipse.sw360.datahandler.thrift.ReleaseRelationship;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.Source;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
+import org.eclipse.sw360.datahandler.thrift.components.EccInformation;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
@@ -341,6 +342,16 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         final Release sw360Release = releaseService.getReleaseForUserById(id, sw360User);
         final CollectionModel<EntityModel<Attachment>> resources = attachmentService.getResourcesFromList(sw360Release.getAttachments());
         return new ResponseEntity<>(resources, HttpStatus.OK);
+    }
+
+    @GetMapping(value = RELEASES_URL + "/{id}/eccInformation")
+    public ResponseEntity<EntityModel<EccInformation>> getReleaseECCInformation(
+            @PathVariable("id") String id) throws TException {
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        final Release sw360Release = releaseService.getReleaseForUserById(id, sw360User);
+        final EccInformation eccInformation = sw360Release.getEccInformation();
+        final EntityModel<EccInformation> eccInformationResource = EntityModel.of(eccInformation);
+        return new ResponseEntity<>(eccInformationResource, HttpStatus.OK);
     }
 
     @GetMapping(value = RELEASES_URL + "/{releaseId}/attachments/download", produces="application/zip")

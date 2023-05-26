@@ -33,6 +33,7 @@ import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
+import org.eclipse.sw360.datahandler.thrift.components.EccInformation;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
@@ -626,6 +627,14 @@ public class RestControllerHelper<T> {
         embeddedObligation.setType(null);
         return embeddedObligation;
     }
+
+//    public EccInformation convertToEmbeddedEccInformation(EccInformation eccInformation) {
+//        EccInformation embeddedEccInformation = new EccInformation();
+//        embeddedEccInformation.setTitle(obligation.getTitle());
+//        embeddedEccInformation.setId(obligation.getId());
+//        embeddedEccInformation.setType(null);
+//        return embeddedObligation;
+//    }
 
     public Vendor convertToEmbeddedVendor(Vendor vendor) {
         Vendor embeddedVendor = convertToEmbeddedVendor(vendor.getFullname());
