@@ -426,3 +426,25 @@ include::{snippets}/should_document_get_release_subscription/http-response.adoc[
 ===== Links
 
 include::{snippets}/should_document_get_release_subscription/links.adoc[]
+
+[[resources-release-get-ECC-Information]]
+==== Listing releases ECC Information
+
+A `GET` request will list all ECC Information of Release
+
+===== Response structure
+
+include::{snippets}/should_document_get_release_ecc_information/response-fields.adoc[]
+
+===== Example request
+
+include::{snippets}/should_document_get_release_ecc_information/curl-request.adoc[]
+
+===== Example response
+
+include::{snippets}/should_document_get_release_ecc_information/http-response.adoc[]
+
+===== Links
+
+include::{snippets}/should_document_get_release_ecc_information/links.adoc[]
+

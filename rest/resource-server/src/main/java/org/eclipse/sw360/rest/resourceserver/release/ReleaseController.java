@@ -344,16 +344,6 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         return new ResponseEntity<>(resources, HttpStatus.OK);
     }
 
-    @GetMapping(value = RELEASES_URL + "/{id}/eccInformation")
-    public ResponseEntity<EntityModel<EccInformation>> getReleaseECCInformation(
-            @PathVariable("id") String id) throws TException {
-        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
-        final Release sw360Release = releaseService.getReleaseForUserById(id, sw360User);
-        final EccInformation eccInformation = sw360Release.getEccInformation();
-        final EntityModel<EccInformation> eccInformationResource = EntityModel.of(eccInformation);
-        return new ResponseEntity<>(eccInformationResource, HttpStatus.OK);
-    }
-
     @GetMapping(value = RELEASES_URL + "/{releaseId}/attachments/download", produces="application/zip")
     public void downloadAttachmentBundleFromRelease(
             @PathVariable("releaseId") String releaseId,
@@ -580,6 +570,15 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         });
 
         return release;
+    }
+
+    @GetMapping(value = RELEASES_URL + "/{id}/eccInformation")
+    public ResponseEntity<EntityModel<EccInformation>> getReleaseECCInformation(
+            @PathVariable("id") String id) throws TException {
+        final User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        final EccInformation eccInformation = releaseService.getECCInformationByReleaseId(id, sw360User);
+        final EntityModel<EccInformation> eccInformationResource = EntityModel.of(eccInformation);
+        return new ResponseEntity<>(eccInformationResource, HttpStatus.OK);
     }
 }
 

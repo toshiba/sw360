@@ -170,28 +170,6 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
         releaseExternalIds.put("mainline-id-component", "1432");
         releaseExternalIds.put("ws-component-id", "[\"2365\",\"5487923\"]");
 
-        EccInformation eccInformation = new EccInformation();
-        eccInformation.setAl("2222");
-        eccInformation.setEccn("2222");
-        eccInformation.setAssessorContactPerson("2222");
-        eccInformation.setAssessorDepartment("2222");
-        eccInformation.setEccComment("2222");
-        eccInformation.set("2222");
-        eccInformation.setAl("2222");
-        eccInformation.setAl("2222");
-
-        {
-            "al": "222222222",
-                "eccn": "EC",
-                "assessorContactPerson": "admin@sw360.org",
-                "assessorDepartment": "DEPARTMENT",
-                "eccComment": "222",
-                "materialIndexNumber": "11",
-                "assessmentDate": "2023-05-26",
-                "eccStatus": "APPROVED"
-        }
-        ecc
-
         release.setId(releaseId);
         owner.setReleaseId(release.getId());
         release.setName("Spring Core 4.3.4");
@@ -258,6 +236,19 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
         attachment3.setAttachmentContentId("34535345");
         attachment3.setAttachmentType(AttachmentType.SOURCE);
         release3.setAttachments(ImmutableSet.of(attachment3));
+
+        EccInformation eccInformation = new EccInformation();
+        eccInformation.setAl("AL");
+        eccInformation.setEccn("ECCN");
+        eccInformation.setAssessorContactPerson("admin@sw360.org");
+        eccInformation.setAssessorDepartment("DEPARTMENT");
+        eccInformation.setEccComment("Set ECC");
+        eccInformation.setMaterialIndexNumber("12");
+        eccInformation.setAssessmentDate("2023-05-26");
+        eccInformation.setEccStatus(ECCStatus.APPROVED);
+        release3.setEccInformation(eccInformation);
+        given(this.releaseServiceMock.getReleaseForUserById(any(), any())).willReturn(release3);
+        given(this.releaseServiceMock.getECCInformationByReleaseId(any(),any())).willReturn(eccInformation);
 
         Set<Project> projectList = new HashSet<>();
         project = new Project();
@@ -571,7 +562,7 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
     @Test
     public void should_document_get_release_ecc_information() throws Exception {
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
-        mockMvc.perform(get("/api/releases/" + release.getId() + "eccInformation")
+        mockMvc.perform(get("/api/releases/" + release3.getId() + "/eccInformation")
                 .header("Authorization", "Bearer " + accessToken)
                 .accept(MediaTypes.HAL_JSON))
                 .andExpect(status().isOk())
