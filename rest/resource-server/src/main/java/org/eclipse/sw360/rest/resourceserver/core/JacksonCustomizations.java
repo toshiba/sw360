@@ -491,18 +491,12 @@ public class JacksonCustomizations {
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @JsonIgnoreProperties({
-                "vendor",
-                "longName",
-                "releaseRelationship",
-                "hasSubreleases",
                 "nodeId",
                 "parentNodeId",
                 "componentType",
-                "licenseIds",
                 "licenseNames",
                 "comment",
                 "otherLicenseIds",
-                "accessible",
                 "attachmentsSize",
                 "setName",
                 "setVersion",

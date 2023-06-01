@@ -26,6 +26,7 @@ import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundExceptio
 import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
+import org.eclipse.sw360.datahandler.thrift.components.ReleaseLink;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.ExternalToolProcess;
@@ -560,6 +561,16 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         return new ResponseEntity<HalResource>(responseResource, status);
     }
 
+    @RequestMapping(value = RELEASES_URL + "/{id}/releases", method = RequestMethod.GET)
+    public ResponseEntity getLinkReleases(
+            @PathVariable("id") String releaseId) throws TException {
+        User user = restControllerHelper.getSw360UserFromAuthentication();
+        Release release = releaseService.getReleaseForUserById(releaseId, user);
+        List<ReleaseLink> linkedReleaseRelations = releaseService.getLinkedReleaseRelations(release, user);
+        List<ReleaseLink> linkedReleaseLinks = restControllerHelper.convertToEmbeddedLinkedReleaseRelation(linkedReleaseRelations);
+        return new ResponseEntity<>(linkedReleaseLinks,HttpStatus.OK);
+    }
+
     // Link release to release
     @PreAuthorize("hasAuthority('WRITE')")
     @RequestMapping(value = RELEASES_URL + "/{id}/releases", method = RequestMethod.POST)
@@ -616,6 +627,7 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         }
         return halRelease;
     }
+
     private HalResource<Release> createHalReleaseResourceWithAllDetails(Release release) {
         HalResource<Release> halRelease = new HalResource<>(release);
         Link componentLink = linkTo(ReleaseController.class)
