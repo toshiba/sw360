@@ -34,6 +34,7 @@ import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentDTO;
 import org.eclipse.sw360.datahandler.thrift.attachments.UsageAttachment;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
+import org.eclipse.sw360.datahandler.thrift.components.ComponentDTO;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseLink;
@@ -525,14 +526,43 @@ public class RestControllerHelper<T> {
         return projectToUpdate;
     }
 
-    public Component updateComponent(Component componentToUpdate, Component requestBodyComponent) {
+    public Component updateComponent(Component componentToUpdate, ComponentDTO requestBodyComponent) {
+        Component component = convertToComponent(requestBodyComponent);
         for(Component._Fields field:Component._Fields.values()) {
-            Object fieldValue = requestBodyComponent.getFieldValue(field);
+            Object fieldValue = component.getFieldValue(field);
             if(fieldValue != null) {
                 componentToUpdate.setFieldValue(field, fieldValue);
             }
         }
         return componentToUpdate;
+    }
+
+    public Component convertToComponent(ComponentDTO componentDTO) {
+        Component component = new Component();
+
+        component.setId(componentDTO.getId());
+        component.setName(componentDTO.getName());
+        component.setDescription(componentDTO.getDescription());
+        component.setCreatedOn(componentDTO.getCreatedOn());
+        component.setComponentType(componentDTO.getComponentType());
+        component.setCreatedBy(componentDTO.getCreatedBy());
+        component.setSubscribers(componentDTO.getSubscribers());
+        component.setModerators(componentDTO.getModerators());
+        component.setComponentOwner(componentDTO.getComponentOwner());
+        component.setOwnerAccountingUnit(componentDTO.getOwnerAccountingUnit());
+        component.setOwnerGroup(componentDTO.getOwnerGroup());
+        component.setOwnerCountry(componentDTO.getOwnerCountry());
+        component.setRoles(componentDTO.getRoles());
+        component.setExternalIds(componentDTO.getExternalIds());
+        component.setAdditionalData(componentDTO.getAdditionalData());
+        component.setDefaultVendorId(componentDTO.getDefaultVendorId());
+        component.setCategories(componentDTO.getCategories());
+        component.setHomepage(componentDTO.getHomepage());
+        component.setMailinglist(componentDTO.getMailinglist());
+        component.setWiki(componentDTO.getWiki());
+        component.setBlog(componentDTO.getBlog());
+
+        return component;
     }
 
     public Release updateRelease(Release releaseToUpdate, Release requestBodyRelease) {
@@ -798,6 +828,26 @@ public class RestControllerHelper<T> {
         attachmentDTO.setUsageAttachment(usage);
 
         return attachmentDTO;
+    }
+
+    public Attachment convertToAttachment(AttachmentDTO attachmentDTO) {
+        Attachment attachment = new Attachment();
+        attachment.setAttachmentContentId(attachmentDTO.getAttachmentContentId());
+        attachment.setFilename(attachmentDTO.getFilename());
+        attachment.setSha1(attachmentDTO.getSha1());
+        attachment.setAttachmentType(attachmentDTO.getAttachmentType());
+        attachment.setCreatedBy(attachmentDTO.getCreatedBy());
+        attachment.setCreatedTeam(attachmentDTO.getCreatedTeam());
+        attachment.setCreatedComment(attachmentDTO.getCreatedComment());
+        attachment.setCreatedOn(attachmentDTO.getCreatedOn());
+        attachment.setCheckedBy(attachmentDTO.getCheckedBy());
+        attachment.setCheckedTeam(attachmentDTO.getCheckedTeam());
+        attachment.setCheckedComment(attachmentDTO.getCheckedComment());
+        attachment.setCheckedOn(attachmentDTO.getCheckedOn());
+        attachment.setCheckStatus(attachmentDTO.getCheckStatus());
+        attachment.setSuperAttachmentId(attachmentDTO.getSuperAttachmentId());
+        attachment.setSuperAttachmentFilename(attachmentDTO.getSuperAttachmentFilename());
+        return attachment;
     }
 
     public Vulnerability convertToEmbeddedVulnerability(Vulnerability vulnerability) {
