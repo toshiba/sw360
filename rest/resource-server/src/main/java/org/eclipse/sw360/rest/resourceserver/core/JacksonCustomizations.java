@@ -67,6 +67,7 @@ public class JacksonCustomizations {
             setMixInAnnotation(Project.class, Sw360Module.ProjectMixin.class);
             setMixInAnnotation(User.class, Sw360Module.UserMixin.class);
             setMixInAnnotation(Component.class, Sw360Module.ComponentMixin.class);
+            setMixInAnnotation(ComponentDTO.class, Sw360Module.ComponentDTOMixin.class);
             setMixInAnnotation(Release.class, Sw360Module.ReleaseMixin.class);
             setMixInAnnotation(ReleaseLink.class, Sw360Module.ReleaseLinkMixin.class);
             setMixInAnnotation(ClearingReport.class, Sw360Module.ClearingReportMixin.class);
@@ -395,6 +396,86 @@ public class JacksonCustomizations {
                 "setCdxComponentType"
         })
         static abstract class ComponentMixin extends Component {
+            @Override
+            @JsonProperty(PropertyKeyMapping.COMPONENT_VENDOR_KEY_JSON)
+            abstract public Set<String> getVendorNames();
+        }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties(value = {
+                "id",
+                "type",
+                "revision",
+                "attachments",
+                "createdBy",
+                "releases",
+                "wikipedia",
+                "openHub",
+                "documentState",
+                "permissions",
+                "setId",
+                "setRevision",
+                "setType",
+                "setName",
+                "setDescription",
+                "setAttachments",
+                "setCreatedOn",
+                "setCreatedBy",
+                "setSubscribers",
+                "setModerators",
+                "setDefaultVendor",
+                "setDefaultVendorId",
+                "setCategories",
+                "setLanguages",
+                "setVendorNames",
+                "setHomepage",
+                "setMailinglist",
+                "setWiki",
+                "setBlog",
+                "setWikipedia",
+                "setOpenHub",
+                "setPermissions",
+                "attachmentsSize",
+                "attachmentsIterator",
+                "setComponentType",
+                "subscribersSize",
+                "subscribersIterator",
+                "moderatorsSize",
+                "moderatorsIterator",
+                "categoriesSize",
+                "categoriesIterator",
+                "languagesIterator",
+                "softwarePlatformsSize",
+                "softwarePlatformsIterator",
+                "setExternalIds",
+                "externalIdsSize",
+                "setSoftwarePlatforms",
+                "operatingSystemsSize",
+                "operatingSystemsIterator",
+                "setOperatingSystems",
+                "vendorNamesSize",
+                "vendorNamesIterator",
+                "setDocumentState",
+                "permissionsSize",
+                "setComponentOwner",
+                "setOwnerAccountingUnit",
+                "setOwnerGroup",
+                "setOwnerCountry",
+                "rolesSize",
+                "setRoles",
+                "additionalDataSize",
+                "setAdditionalData",
+                "cdxComponentType",
+                "setCdxComponentType",
+                "setAttachmentDTOs",
+                "attachmentDTOsIterator",
+                "attachmentDTOsSize",
+                "setBusinessUnit",
+                "setVisbility",
+                "visbility"
+
+        })
+        static abstract class ComponentDTOMixin extends Component {
             @Override
             @JsonProperty(PropertyKeyMapping.COMPONENT_VENDOR_KEY_JSON)
             abstract public Set<String> getVendorNames();
