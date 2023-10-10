@@ -76,6 +76,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         license.setExternalIds(externalIds);
         license.setAdditionalData(Collections.singletonMap("Key", "Value"));
         license.setNote("License's Note");
+        license.setExternalLicenseLink("https://spdx.org/licenses/Apache-2.0.html");
 
         License license2 = new License();
         license2.setId("MIT");
@@ -83,6 +84,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         license2.setShortname("MIT");
         license2.setText("placeholder for the MIT license text");
         license2.setNote("License2's Note");
+        license.setExternalLicenseLink("https://spdx.org/licenses/MIT.html");
 
         List<License> licenseList = new ArrayList<>();
         licenseList.add(license);
@@ -151,6 +153,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
                                 fieldWithPath("fullName").description("The full name of the license"),
                                 fieldWithPath("shortName").description("The short name of the license, optional"),
                                 subsectionWithPath("externalIds").description("When releases are imported from other tools, the external ids can be stored here"),
+                                fieldWithPath("externalLicenseLink").description("The external license link of the license"),
                                 subsectionWithPath("additionalData").description("A place to store additional data used by external tools"),
                                 fieldWithPath("text").description("The license's original text"),
                                 fieldWithPath("checked").description("The information, whether the license is already checked, optional and defaults to true"),
