@@ -28,9 +28,6 @@ import org.eclipse.sw360.datahandler.resourcelists.PaginationResult;
 import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundException;
 import org.eclipse.sw360.datahandler.resourcelists.ResourceComparatorGenerator;
 import org.eclipse.sw360.datahandler.resourcelists.ResourceListController;
-import org.eclipse.sw360.datahandler.thrift.ProjectReleaseRelationship;
-import org.eclipse.sw360.datahandler.thrift.Quadratic;
-import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentDTO;
 import org.eclipse.sw360.datahandler.thrift.attachments.CheckStatus;
@@ -63,6 +60,7 @@ import org.eclipse.sw360.rest.resourceserver.license.Sw360LicenseService;
 import org.eclipse.sw360.rest.resourceserver.moderationrequest.EmbeddedModerationRequest;
 import org.eclipse.sw360.rest.resourceserver.moderationrequest.ModerationRequestController;
 import org.eclipse.sw360.rest.resourceserver.moderationrequest.Sw360ModerationRequestService;
+import org.eclipse.sw360.rest.resourceserver.obligation.Sw360ObligationService;
 import org.eclipse.sw360.rest.resourceserver.project.EmbeddedProject;
 import org.eclipse.sw360.rest.resourceserver.vulnerability.VulnerabilityController;
 import org.eclipse.sw360.rest.resourceserver.project.EmbeddedProjectDTO;
@@ -138,6 +136,9 @@ public class RestControllerHelper<T> {
 
     @NonNull
     private final Sw360LicenseService licenseService;
+
+    @NonNull
+    private final Sw360ObligationService obligationService;
 
     @NonNull
     private final ResourceComparatorGenerator<T> resourceComparatorGenerator = new ResourceComparatorGenerator<>();
@@ -665,6 +666,38 @@ public class RestControllerHelper<T> {
         }
         if (!licenseIncorrect.isEmpty()) {
             throw new HttpMessageNotReadableException("License with ids " + licenseIncorrect + " does not exist in SW360 database.");
+        }
+    }
+
+    public License mapLicenseRequestToLicense(License licenseRequestBody, License licenseUpdate) {
+        for (License._Fields field : License._Fields.values()) {
+            Object fieldValue = licenseRequestBody.getFieldValue(field);
+            if (fieldValue != null) {
+                switch (field) {
+                    case OBLIGATION_DATABASE_IDS:
+                        isObligationValid(licenseRequestBody.getObligationDatabaseIds());
+                        break;
+                    default:
+                }
+                licenseUpdate.setFieldValue(field, fieldValue);
+            }
+        }
+        return licenseUpdate;
+    }
+
+    private void isObligationValid(Set<String> obligationIds) {
+        List <String> obligationIncorrect = new ArrayList<>();
+        if (CommonUtils.isNotEmpty(obligationIds)) {
+            for (String obligationId : obligationIds) {
+                try {
+                    obligationService.getObligationById(obligationId);
+                } catch (Exception e) {
+                    obligationIncorrect.add(obligationId);
+                }
+            }
+        }
+        if (!obligationIncorrect.isEmpty()) {
+            throw new HttpMessageNotReadableException("Obligation with ids " + obligationIncorrect + " does not exist in SW360 database.");
         }
     }
 

@@ -16,6 +16,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.THttpClient;
 import org.apache.thrift.transport.TTransportException;
+import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.permissions.PermissionUtils;
 import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundException;
@@ -128,6 +129,23 @@ public class Sw360LicenseService {
         return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
     }
 
+    public RequestStatus updateLicense(License license, User sw360User) throws TException {
+        LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
+        if (null != license){
+            Set<String> obligationIds = license.getObligationDatabaseIds();
+            if (CommonUtils.isNullOrEmptyCollection(obligationIds)) {
+                license.unsetObligations();
+            } else {
+                List<String> obligationIdList = new ArrayList<>(obligationIds);
+                List<Obligation> obligations = sw360LicenseClient.getObligationsByIds(obligationIdList);
+                checkObligationLevel(obligations, sw360User);
+                license.setObligationDatabaseIds(obligationIds);
+                license.setObligations(obligations);
+            }
+        }
+        return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
+    }
+
     public void checkObligationIds(Set<String> obligationIds) throws TException {
         if (obligationIds.isEmpty()) {
             throw new HttpMessageNotReadableException("Cannot update because no obliagtion id input");
@@ -176,7 +194,7 @@ public class Sw360LicenseService {
             throw new HttpMessageNotReadableException("Unable to import All Spdx license. User is not admin");
         }
     }
-    
+
     public void getDownloadLicenseArchive(User sw360User ,HttpServletRequest request,HttpServletResponse response) throws TException,IOException{
         if (!PermissionUtils.isUserAtLeast(UserGroup.ADMIN, sw360User)) {
             throw new HttpMessageNotReadableException("Unable to download archive license. User is not admin");

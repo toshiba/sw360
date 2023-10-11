@@ -11,10 +11,12 @@
  */
 package org.eclipse.sw360.rest.resourceserver.license;
 
+import com.google.common.collect.ImmutableMap;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
+import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.users.User;
@@ -61,6 +63,9 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
     @NonNull
     private final RestControllerHelper restControllerHelper;
 
+    private static final ImmutableMap<String, String> RESPONSE_BODY_FOR_MODERATION_REQUEST = ImmutableMap.<String, String>builder()
+            .put("message", "Moderation request is created").build();
+
     @RequestMapping(value = LICENSES_URL, method = RequestMethod.GET)
     public ResponseEntity<CollectionModel<EntityModel<License>>> getLicenses() throws TException {
         List<License> sw360Licenses = licenseService.getLicenses();
@@ -106,6 +111,22 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
                 .buildAndExpand(license.getId()).toUri();
 
         return ResponseEntity.created(location).body(halResource);
+    }
+
+    @PreAuthorize("hasAuthority('WRITE')")
+    @RequestMapping(value = LICENSES_URL+ "/{id}", method = RequestMethod.PATCH)
+    public ResponseEntity<EntityModel<License>> updateLicense(
+            @PathVariable("id") String id,
+            @RequestBody License licenseRequestBody) throws TException {
+        User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        License licenseUpdate = licenseService.getLicenseById(id);
+        licenseUpdate = restControllerHelper.mapLicenseRequestToLicense(licenseRequestBody, licenseUpdate);
+        RequestStatus requestStatus = licenseService.updateLicense(licenseUpdate, sw360User);
+        if (requestStatus == RequestStatus.SENT_TO_MODERATOR) {
+            return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
+        }
+        HalResource<License> halResource = createHalLicense(licenseUpdate);
+        return new ResponseEntity<>(halResource, HttpStatus.OK);
     }
 
     @PreAuthorize("hasAuthority('WRITE')")
