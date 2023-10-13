@@ -10,10 +10,13 @@
  */
 package org.eclipse.sw360.licenses.db;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.thrift.TException;
 import org.eclipse.sw360.components.summary.SummaryType;
 import org.eclipse.sw360.datahandler.cloudantclient.DatabaseConnectorCloudant;
 import org.eclipse.sw360.datahandler.cloudantclient.DatabaseRepositoryCloudantClient;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
+import org.eclipse.sw360.datahandler.common.SW360Constants;
 import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.db.CustomPropertiesRepository;
 import org.eclipse.sw360.datahandler.db.ReleaseRepository;
@@ -21,6 +24,7 @@ import org.eclipse.sw360.datahandler.db.VendorRepository;
 import org.eclipse.sw360.datahandler.entitlement.LicenseModerator;
 import org.eclipse.sw360.datahandler.permissions.PermissionUtils;
 import org.eclipse.sw360.datahandler.thrift.*;
+import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.licenses.*;
 import org.eclipse.sw360.datahandler.thrift.moderation.ModerationRequest;
@@ -29,11 +33,14 @@ import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
 import org.eclipse.sw360.datahandler.thrift.changelogs.ChangeLogs;
 import org.eclipse.sw360.datahandler.thrift.changelogs.Operation;
+import org.eclipse.sw360.exporter.ComponentExporter;
+import org.eclipse.sw360.exporter.LicenseExporter;
 import org.eclipse.sw360.licenses.tools.SpdxConnector;
 import org.eclipse.sw360.licenses.tools.OSADLObligationConnector;
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.sw360.mail.MailConstants;
 import org.ektorp.DocumentOperationResult;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
@@ -44,10 +51,14 @@ import com.cloudant.client.api.model.Response;
 import com.google.common.collect.Sets;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -153,6 +164,51 @@ public class LicenseDatabaseHandler {
     /**
      * Get license from the database and fill its obligations
      */
+
+    private LicenseExporter getLicenseExporterObject() {
+        ThriftClients thriftClients = new ThriftClients();
+        Function<Logger,List<LicenseType>> getLicenseTypes = log -> {
+            LicenseService.Iface client = thriftClients.makeLicenseClient();
+            try {
+                return client.getLicenseTypes();
+            } catch (TException e) {
+                log.error("Error getting license type list.", e);
+                return Collections.emptyList();
+            }
+        };
+        return new LicenseExporter(getLicenseTypes);
+    }
+
+    public ByteBuffer downloadExcel(String token) throws SW360Exception {
+        try {
+            ThriftClients thriftClients = new ThriftClients();
+            Function<Logger,List<LicenseType>> getLicenseTypes = log -> {
+                LicenseService.Iface client = thriftClients.makeLicenseClient();
+                try {
+                    return client.getLicenseTypes();
+                } catch (TException e) {
+                    log.error("Error getting license type list.", e);
+                    return Collections.emptyList();
+                }
+            };
+            LicenseExporter exporter = new LicenseExporter(getLicenseTypes);
+            InputStream stream = exporter.downloadExcelSheet(token);
+            return ByteBuffer.wrap(IOUtils.toByteArray(stream));
+        } catch (IOException e) {
+            throw new SW360Exception(e.getMessage());
+        }
+    }
+
+    public ByteBuffer getLicenseReportDataStream() throws TException{
+        try {
+            List<License> licenses = getLicenseSummary();
+            LicenseExporter exporter = getLicenseExporterObject();
+            InputStream stream = exporter.makeExcelExport(licenses);
+            return ByteBuffer.wrap(IOUtils.toByteArray(stream));
+        }catch (IOException e) {
+            throw new SW360Exception(e.getMessage());
+        }
+    }
 
     public License getLicenseForOrganisation(String id, String organisation) throws SW360Exception {
         License license = licenseRepository.get(id);
