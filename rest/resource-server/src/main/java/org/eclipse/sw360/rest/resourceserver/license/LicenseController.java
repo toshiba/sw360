@@ -33,10 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
@@ -45,6 +42,8 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -127,6 +126,41 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
         }
         HalResource<License> halResource = createHalLicense(licenseUpdate);
         return new ResponseEntity<>(halResource, HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('WRITE')")
+    @RequestMapping(value = LICENSES_URL+ "/{id}/externalLink", method = RequestMethod.PATCH)
+    public ResponseEntity<EntityModel<License>> updateExternalLink(
+            @PathVariable("id") String id,
+            @RequestParam(value = "externalLicenseLink") String externalLink) throws TException {
+        if (!isUrl(externalLink)) {
+            throw new RuntimeException("External Link invalid!");
+        }
+        User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        License licenseUpdate = licenseService.getLicenseById(id);
+        licenseUpdate.setExternalLicenseLink(externalLink);
+        RequestStatus requestStatus = licenseService.getStatusUpdateExternalLinkToLicense(licenseUpdate, sw360User);
+        HalResource<License> halResource = null;
+        if (requestStatus == RequestStatus.SENT_TO_MODERATOR) {
+            return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
+        } else if (requestStatus == RequestStatus.SUCCESS) {
+            halResource = createHalLicense(licenseUpdate);
+            return new ResponseEntity<>(halResource, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(halResource, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+    }
+
+    private static boolean isUrl(String s) {
+        String pattern = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
+        try {
+            Pattern patt = Pattern.compile(pattern);
+            Matcher matcher = patt.matcher(s);
+            return matcher.matches();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @PreAuthorize("hasAuthority('WRITE')")

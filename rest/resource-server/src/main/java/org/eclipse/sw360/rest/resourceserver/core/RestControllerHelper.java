@@ -37,6 +37,7 @@ import org.eclipse.sw360.datahandler.thrift.components.ComponentDTO;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentService;
 import org.eclipse.sw360.datahandler.thrift.components.ComponentType;
 import org.eclipse.sw360.datahandler.thrift.components.COTSDetails;
+import org.eclipse.sw360.datahandler.thrift.licenses.LicenseService;
 import org.eclipse.sw360.datahandler.thrift.packages.Package;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.components.ReleaseLink;

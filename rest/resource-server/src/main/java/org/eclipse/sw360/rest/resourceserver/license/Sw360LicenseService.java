@@ -146,6 +146,11 @@ public class Sw360LicenseService {
         return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
     }
 
+    public RequestStatus getStatusUpdateExternalLinkToLicense(License license, User sw360User) throws TException {
+        LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
+        return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
+    }
+
     public void checkObligationIds(Set<String> obligationIds) throws TException {
         if (obligationIds.isEmpty()) {
             throw new HttpMessageNotReadableException("Cannot update because no obliagtion id input");
