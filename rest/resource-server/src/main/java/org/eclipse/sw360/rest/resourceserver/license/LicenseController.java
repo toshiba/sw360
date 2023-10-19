@@ -16,6 +16,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
+import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
@@ -147,9 +148,30 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
             halResource = createHalLicense(licenseUpdate);
             return new ResponseEntity<>(halResource, HttpStatus.OK);
         } else {
-            return new ResponseEntity<>(halResource, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity("Update External Link to License Fail!",HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
 
+    @PreAuthorize("hasAuthority('WRITE')")
+    @RequestMapping(value = LICENSES_URL+ "/{id}/whitelist", method = RequestMethod.PATCH)
+    public ResponseEntity<EntityModel<License>> updateWhitelist(
+            @PathVariable("id") String licenseId,
+            @RequestParam("obligationIds") Set<String> obligationIds) throws TException {
+        if (CommonUtils.isNullOrEmptyCollection(obligationIds)) {
+            throw new HttpMessageNotReadableException("Obligation Ids invalid!");
+        }
+        User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        RequestStatus requestStatus = licenseService.updateWhitelist(obligationIds, licenseId, sw360User);
+        HalResource<License> halResource;
+        if (requestStatus == RequestStatus.SENT_TO_MODERATOR) {
+            return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
+        } else if (requestStatus == RequestStatus.SUCCESS) {
+            License licenseUpdate = licenseService.getLicenseById(licenseId);
+            halResource = createHalLicense(licenseUpdate);
+            return new ResponseEntity<>(halResource, HttpStatus.OK);
+        } else {
+            return new ResponseEntity("Update Whitelist to Obligation Fail!",HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     private static boolean isUrl(String s) {

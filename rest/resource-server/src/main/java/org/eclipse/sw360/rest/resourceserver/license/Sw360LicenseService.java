@@ -10,6 +10,7 @@
 
 package org.eclipse.sw360.rest.resourceserver.license;
 
+import com.google.common.collect.ImmutableSet;
 import lombok.RequiredArgsConstructor;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -149,6 +150,12 @@ public class Sw360LicenseService {
     public RequestStatus getStatusUpdateExternalLinkToLicense(License license, User sw360User) throws TException {
         LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
         return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
+    }
+
+    public RequestStatus updateWhitelist(Set<String> obligationIds, String licenseId, User user) throws TException {
+        checkObligationIds(obligationIds);
+        LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
+        return sw360LicenseClient.updateWhitelist(licenseId, ImmutableSet.copyOf(obligationIds), user);
     }
 
     public void checkObligationIds(Set<String> obligationIds) throws TException {
