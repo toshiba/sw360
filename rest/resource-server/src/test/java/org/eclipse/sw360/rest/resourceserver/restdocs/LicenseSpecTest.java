@@ -109,6 +109,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         obligation1.setId("0001");
         obligation1.setTitle("Obligation 1");
         obligation1.setText("This is text of Obligation 1");
+        obligation1.setWhitelist(Collections.singleton("Department1"));
         obligation1.setObligationType(ObligationType.PERMISSION);
         obligation1.setObligationLevel(ObligationLevel.LICENSE_OBLIGATION);
 
@@ -116,6 +117,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         obligation2.setId("0002");
         obligation2.setTitle("Obligation 2");
         obligation2.setText("This is text of Obligation 2");
+        obligation2.setWhitelist(Collections.singleton("Department2"));
         obligation2.setObligationType(ObligationType.OBLIGATION);
         obligation2.setObligationLevel(ObligationLevel.LICENSE_OBLIGATION);
     }

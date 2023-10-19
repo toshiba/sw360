@@ -977,7 +977,6 @@ public class JacksonCustomizations {
         @JsonIgnoreProperties({
                 "id",
                 "revision",
-                "whitelist",
                 "whitelistSize",
                 "whitelistIterator",
                 "development",
