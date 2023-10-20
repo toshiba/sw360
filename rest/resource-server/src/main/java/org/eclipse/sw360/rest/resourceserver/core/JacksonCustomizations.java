@@ -923,9 +923,7 @@ public class JacksonCustomizations {
         @JsonIgnoreProperties({
                 "id",
                 "revision",
-                "licenseType",
                 "licenseTypeDatabaseId",
-                "externalLicenseLink",
                 "reviewdate",
                 "obligations",
                 "obligationDatabaseIds",
@@ -980,7 +978,6 @@ public class JacksonCustomizations {
         @JsonIgnoreProperties({
                 "id",
                 "revision",
-                "whitelist",
                 "whitelistSize",
                 "whitelistIterator",
                 "development",
