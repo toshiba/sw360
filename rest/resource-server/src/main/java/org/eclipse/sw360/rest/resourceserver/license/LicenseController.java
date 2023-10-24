@@ -120,6 +120,9 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
             @RequestBody License licenseRequestBody) throws TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         License licenseUpdate = licenseService.getLicenseById(id);
+        if (licenseUpdate.isChecked() && !licenseRequestBody.isChecked()) {
+            return new ResponseEntity("Reject license update due to: an already checked license is not allowed to become unchecked again", HttpStatus.METHOD_NOT_ALLOWED);
+        }
         licenseUpdate = restControllerHelper.mapLicenseRequestToLicense(licenseRequestBody, licenseUpdate);
         RequestStatus requestStatus = licenseService.updateLicense(licenseUpdate, sw360User);
         if (requestStatus == RequestStatus.SENT_TO_MODERATOR) {
@@ -134,9 +137,6 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
     public ResponseEntity<EntityModel<License>> updateExternalLink(
             @PathVariable("id") String id,
             @RequestParam(value = "externalLicenseLink") String externalLink) throws TException {
-        if (!isUrl(externalLink)) {
-            throw new RuntimeException("External Link invalid!");
-        }
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         License licenseUpdate = licenseService.getLicenseById(id);
         licenseUpdate.setExternalLicenseLink(externalLink);
@@ -171,17 +171,6 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
             return new ResponseEntity<>(halResource, HttpStatus.OK);
         } else {
             return new ResponseEntity("Update Whitelist to Obligation Fail!",HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private static boolean isUrl(String s) {
-        String pattern = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
-        try {
-            Pattern patt = Pattern.compile(pattern);
-            Matcher matcher = patt.matcher(s);
-            return matcher.matches();
-        } catch (RuntimeException e) {
-            return false;
         }
     }
 
