@@ -201,7 +201,7 @@ public class LicenseDatabaseHandler {
 
     public ByteBuffer getLicenseReportDataStream() throws TException{
         try {
-            List<License> licenses = getLicenseSummary();
+            List<License> licenses = getLicenseSummaryForExport();
             LicenseExporter exporter = getLicenseExporterObject();
             InputStream stream = exporter.makeExcelExport(licenses);
             return ByteBuffer.wrap(IOUtils.toByteArray(stream));
