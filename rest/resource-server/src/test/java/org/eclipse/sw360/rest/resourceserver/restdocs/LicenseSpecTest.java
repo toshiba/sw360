@@ -61,7 +61,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
     @MockBean
     private Sw360LicenseService licenseServiceMock;
 
-    private License license, license3;
+    private License license, license2, license3;
     private Obligation obligation1, obligation2;
 
     @Before
@@ -80,7 +80,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         license.setNote("License's Note");
         license.setExternalLicenseLink("https://spdx.org/licenses/Apache-2.0.html");
 
-        License license2 = new License();
+        license2 = new License();
         license2.setId("MIT");
         license2.setFullname("The MIT License (MIT)");
         license2.setShortname("MIT");
@@ -121,6 +121,12 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         obligation2.setWhitelist(Collections.singleton("Department2"));
         obligation2.setObligationType(ObligationType.OBLIGATION);
         obligation2.setObligationLevel(ObligationLevel.LICENSE_OBLIGATION);
+
+        List<Obligation> obligations = Arrays.asList(obligation1, obligation2);
+        Set<String> obligationIds = new HashSet<>(Arrays.asList(obligation1.getId(), obligation2.getId()));
+        license2.setObligationDatabaseIds(obligationIds);
+        license2.setObligations(obligations);
+        given(this.licenseServiceMock.getObligationsByLicenseId(any())).willReturn(obligations);
     }
 
     @Test
@@ -136,6 +142,25 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
                         ),
                         responseFields(
                                 subsectionWithPath("_embedded.sw360:licenses").description("An array of <<resources-licenses, Licenses resources>>"),
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                        )));
+    }
+
+    @Test
+    public void should_document_get_obligations_by_license() throws Exception {
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(get("/api/licenses/"+  license2.getId()+ "/obligations")
+                .header("Authorization", "Bearer " + accessToken)
+                .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                        links(
+                                linkWithRel("curies").description("Curies are used for online documentation")
+                        ),
+                        responseFields(
+                                subsectionWithPath("_embedded.sw360:obligations[]title").description("The title of the obligation"),
+                                subsectionWithPath("_embedded.sw360:obligations[]obligationType").description("The obligationType of the obligation"),
+                                subsectionWithPath("_embedded.sw360:obligations").description("An array of <<resources-obligations, Obligations resources>>"),
                                 subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
                         )));
     }

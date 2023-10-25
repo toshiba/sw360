@@ -846,6 +846,12 @@ public class LicenseDatabaseHandler {
         return obligations;
     }
 
+    public List<Obligation> getObligationsByLicenseId(String id) throws SW360Exception {
+        License license = getLicenseForOrganisation(id, "?");
+        Set<String> ids = license.getObligationDatabaseIds();
+        return getObligationsByIds(ids);
+    }
+
     public LicenseType getLicenseTypeById(String id) {
         return licenseTypeRepository.get(id);
     }
