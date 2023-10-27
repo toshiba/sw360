@@ -43,11 +43,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipOutputStream;
 
 import javax.servlet.http.HttpServletRequest;
@@ -132,7 +128,7 @@ public class Sw360LicenseService {
 
     public RequestStatus updateLicense(License license, User sw360User) throws TException {
         LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
-        if (null != license){
+        if (null != license) {
             Set<String> obligationIds = license.getObligationDatabaseIds();
             if (CommonUtils.isNullOrEmptyCollection(obligationIds)) {
                 license.unsetObligations();
@@ -147,13 +143,27 @@ public class Sw360LicenseService {
         return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
     }
 
+    public Set<String> getIdObligationsContainWhitelist(User sw360User, String licenseId, Set<String> diffIds) throws TException {
+        Set<String> obligationIdTrue = new HashSet<>();
+        String organisation = sw360User.getDepartment();
+        String businessUnit = SW360Utils.getBUFromOrganisation(organisation);
+        List<Obligation> obligations = getObligationsByLicenseId(licenseId);
+        for (Obligation obligation : obligations) {
+            String obligationId = obligation.getId();
+            Set<String> currentWhitelist = obligation.whitelist != null ? obligation.whitelist : new HashSet<>();
+            if (diffIds.contains(obligationId) && currentWhitelist.contains(businessUnit)) {
+                obligationIdTrue.add(obligationId);
+            }
+        }
+        return obligationIdTrue;
+    }
+
     public RequestStatus getStatusUpdateExternalLinkToLicense(License license, User sw360User) throws TException {
         LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
         return sw360LicenseClient.updateLicense(license, sw360User, sw360User);
     }
 
     public RequestStatus updateWhitelist(Set<String> obligationIds, String licenseId, User user) throws TException {
-        checkObligationIds(obligationIds);
         LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
         return sw360LicenseClient.updateWhitelist(licenseId, ImmutableSet.copyOf(obligationIds), user);
     }

@@ -517,7 +517,10 @@ public class LicenseDatabaseHandler {
                 validateNewLicense(inputLicense);
             } else {
                 validateExistingLicense(inputLicense);
-                oldObligationDatabaseIds = oldLicense.orElse(new License()).getObligationDatabaseIds();
+                License license = oldLicense.orElse(new License());
+                if (!CommonUtils.isNullOrEmptyCollection(license.getObligationDatabaseIds())) {
+                    oldObligationDatabaseIds = license.getObligationDatabaseIds();
+                }
                 oldLicenseForChangelogs = setLicenseForChangelogs(oldLicense.orElse(new License()));
                 oldLicenseForChangelogs.setShortname(inputLicense.getShortname());
             }
@@ -625,7 +628,9 @@ public class LicenseDatabaseHandler {
                 .orElse(Quadratic.NA));
         license.setExternalLicenseLink(inputLicense.getExternalLicenseLink());
         license.setChecked(inputLicense.isChecked());
-        license.setObligationDatabaseIds(inputLicense.getObligationDatabaseIds());
+        if (CommonUtils.isNullOrEmptyCollection(inputLicense.getObligationDatabaseIds())) {
+            license.setObligationDatabaseIds(new HashSet<>());
+        }
         license.setNote(inputLicense.getNote());
 
         return license;

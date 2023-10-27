@@ -127,6 +127,7 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         license2.setObligationDatabaseIds(obligationIds);
         license2.setObligations(obligations);
         given(this.licenseServiceMock.getObligationsByLicenseId(any())).willReturn(obligations);
+        given(this.licenseServiceMock.getIdObligationsContainWhitelist(any(),any(),any())).willReturn(new HashSet<>(Arrays.asList("0001","0002")));
     }
 
     @Test
@@ -253,23 +254,26 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
     public void should_document_update_whitelist_license() throws Exception {
         List<Obligation> obligationList = new ArrayList<>();
         obligationList.add(obligation1);
+        obligationList.add(obligation2);
         license.setObligations(obligationList);
 
         Set<String> obligationIds = new HashSet<String>();
         obligationIds.add(obligation1.getId());
+        obligationIds.add(obligation2.getId());
         license.setObligationDatabaseIds(obligationIds);
+
+        Map<String, Boolean> requestBody = new HashMap<>();
+        requestBody.put("0001",true);
+        requestBody.put("0002",true);
 
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         mockMvc.perform(MockMvcRequestBuilders.patch("/api/licenses/" + license.getId() +"/whitelist")
                         .contentType(MediaTypes.HAL_JSON)
-                        .queryParam("obligationIds",Collections.singleton("0001").toString())
+                        .content(this.objectMapper.writeValueAsString(requestBody))
                         .header("Authorization", "Bearer" + accessToken)
                         .accept(MediaTypes.HAL_JSON))
                 .andExpect(status().isOk())
                 .andDo(this.documentationHandler.document(
-                        requestParameters(
-                                parameterWithName("obligationIds").description("The Obligation Ids link of the license")
-                        ),
                         responseFields(
                                 fieldWithPath("fullName").description("The full name of the license"),
                                 fieldWithPath("shortName").description("The short name of the license, optional"),

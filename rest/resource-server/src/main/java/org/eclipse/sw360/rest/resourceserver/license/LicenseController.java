@@ -12,6 +12,7 @@
 package org.eclipse.sw360.rest.resourceserver.license;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,11 +41,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -165,16 +165,35 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
         }
     }
 
+    private Set<String> getObligationIdsFromRequestWithValueTrue(Map<String, Boolean> reqBodyMaps) {
+        Map<String, Boolean> obligationIdsRequest = reqBodyMaps.entrySet().stream()
+                .filter(reqBodyMap-> reqBodyMap.getValue().equals(true))
+                .collect(Collectors.toMap(reqBodyMap-> reqBodyMap.getKey(),reqBodyMap -> reqBodyMap.getValue()));
+        return obligationIdsRequest.keySet();
+    }
+
     @PreAuthorize("hasAuthority('WRITE')")
     @RequestMapping(value = LICENSES_URL+ "/{id}/whitelist", method = RequestMethod.PATCH)
     public ResponseEntity<EntityModel<License>> updateWhitelist(
             @PathVariable("id") String licenseId,
-            @RequestParam("obligationIds") Set<String> obligationIds) throws TException {
-        if (CommonUtils.isNullOrEmptyCollection(obligationIds)) {
-            throw new HttpMessageNotReadableException("Obligation Ids invalid!");
-        }
+            @RequestBody Map<String, Boolean> reqBodyMaps) throws TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
-        RequestStatus requestStatus = licenseService.updateWhitelist(obligationIds, licenseId, sw360User);
+        License license = licenseService.getLicenseById(licenseId);
+        Set<String> obligationIdsByLicense = license.getObligationDatabaseIds();
+        Map<String, Boolean> obligationIdsRequest = reqBodyMaps.entrySet().stream()
+                .collect(Collectors.toMap(reqBodyMap-> reqBodyMap.getKey(),reqBodyMap -> reqBodyMap.getValue()));
+        Set<String> obligationIds = obligationIdsRequest.keySet();
+
+        Set<String> commonExtIds = Sets.intersection(obligationIdsByLicense, obligationIds);
+        Set<String> diffIds = Sets.difference(obligationIdsByLicense, obligationIds);
+        if (commonExtIds.size() != obligationIds.size()) {
+            throw new HttpMessageNotReadableException("Obligation Ids not in license!" + license.getShortname());
+        }
+
+        Set<String> obligationIdTrue = licenseService.getIdObligationsContainWhitelist(sw360User, licenseId, diffIds);
+        obligationIdTrue.addAll(getObligationIdsFromRequestWithValueTrue(reqBodyMaps));
+
+        RequestStatus requestStatus = licenseService.updateWhitelist(obligationIdTrue, licenseId, sw360User);
         HalResource<License> halResource;
         if (requestStatus == RequestStatus.SENT_TO_MODERATOR) {
             return new ResponseEntity(RESPONSE_BODY_FOR_MODERATION_REQUEST, HttpStatus.ACCEPTED);
