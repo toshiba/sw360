@@ -630,8 +630,9 @@ public class LicenseDatabaseHandler {
         license.setChecked(inputLicense.isChecked());
         if (CommonUtils.isNullOrEmptyCollection(inputLicense.getObligationDatabaseIds())) {
             license.setObligationDatabaseIds(new HashSet<>());
+        } else {
+            license.setObligationDatabaseIds(inputLicense.getObligationDatabaseIds());
         }
-        license.setObligationDatabaseIds(inputLicense.getObligationDatabaseIds());
         license.setNote(inputLicense.getNote());
 
         return license;
