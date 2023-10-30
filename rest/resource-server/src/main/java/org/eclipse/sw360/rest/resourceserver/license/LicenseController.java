@@ -165,9 +165,15 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
     @RequestMapping(value = LICENSES_URL+ "/{id}/externalLink", method = RequestMethod.PATCH)
     public ResponseEntity<EntityModel<License>> updateExternalLink(
             @PathVariable("id") String id,
-            @RequestParam(value = "externalLicenseLink") String externalLink) throws TException {
+            @RequestBody Map<String, String> reqBodyMaps) throws TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         License licenseUpdate = licenseService.getLicenseById(id);
+        String externalLink = "";
+        for (Map.Entry<String, String> reqBodyMap: reqBodyMaps.entrySet()) {
+            if(reqBodyMap.getKey().equalsIgnoreCase("externalLicenseLink")) {
+                externalLink = reqBodyMap.getValue();
+            }
+        }
         licenseUpdate.setExternalLicenseLink(externalLink);
         RequestStatus requestStatus = licenseService.getStatusUpdateExternalLinkToLicense(licenseUpdate, sw360User);
         HalResource<License> halResource = null;

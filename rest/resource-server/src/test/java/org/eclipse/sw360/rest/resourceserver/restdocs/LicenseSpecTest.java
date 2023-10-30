@@ -244,18 +244,17 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
 
     @Test
     public void should_document_update_external_link_license() throws Exception {
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("externalLicenseLink","https://spdx.org/licenses/Apache-3.0.html");
 
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         mockMvc.perform(MockMvcRequestBuilders.patch("/api/licenses/" + license.getId() +"/externalLink")
                         .contentType(MediaTypes.HAL_JSON)
-                        .queryParam("externalLicenseLink", "https://spdx.org/licenses/Apache-3.0.html")
+                        .content(this.objectMapper.writeValueAsString(requestBody))
                         .header("Authorization", "Bearer" + accessToken)
                         .accept(MediaTypes.HAL_JSON))
                 .andExpect(status().isOk())
                 .andDo(this.documentationHandler.document(
-                        requestParameters(
-                                parameterWithName("externalLicenseLink").description("The external license link of the license")
-                        ),
                         responseFields(
                                 fieldWithPath("fullName").description("The full name of the license"),
                                 fieldWithPath("shortName").description("The short name of the license, optional"),
