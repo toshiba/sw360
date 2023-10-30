@@ -11,12 +11,9 @@ package org.eclipse.sw360.rest.resourceserver.restdocs;
 
 import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
-import org.eclipse.sw360.datahandler.thrift.licenses.License;
+import org.eclipse.sw360.datahandler.thrift.licenses.*;
 import org.eclipse.sw360.rest.resourceserver.TestHelper;
 import org.eclipse.sw360.rest.resourceserver.license.Sw360LicenseService;
-import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
-import org.eclipse.sw360.datahandler.thrift.licenses.ObligationLevel;
-import org.eclipse.sw360.datahandler.thrift.licenses.ObligationType;
 import org.eclipse.sw360.datahandler.thrift.Quadratic;
 import org.eclipse.sw360.rest.resourceserver.user.Sw360UserService;
 import org.junit.Before;
@@ -128,6 +125,13 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         license2.setObligations(obligations);
         given(this.licenseServiceMock.getObligationsByLicenseId(any())).willReturn(obligations);
         given(this.licenseServiceMock.getIdObligationsContainWhitelist(any(),any(),any())).willReturn(new HashSet<>(Arrays.asList("0001","0002")));
+
+        LicenseType licenseType = new LicenseType(1,"Public domain");
+        licenseType.setId("0443dda0b9ef420fa1f200e497efc98f");
+        LicenseType licenseType1 = new LicenseType(2,"Proprietary license");
+        licenseType1.setId("9e86774d0769e77bdf5902f936cb55c3");
+        List<LicenseType> licenseTypes = new ArrayList<>(Arrays.asList(licenseType,licenseType1));
+        given(this.licenseServiceMock.getLicenseTypes()).willReturn(licenseTypes);
     }
 
     @Test
@@ -143,6 +147,23 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
                         ),
                         responseFields(
                                 subsectionWithPath("_embedded.sw360:licenses").description("An array of <<resources-licenses, Licenses resources>>"),
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                        )));
+    }
+
+    @Test
+    public void should_document_get_license_types() throws Exception {
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(get("/api/licenseTypes")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andDo(this.documentationHandler.document(
+                        links(
+                                linkWithRel("curies").description("Curies are used for online documentation")
+                        ),
+                        responseFields(
+                                subsectionWithPath("_embedded.sw360:licenseTypes").description("An array of <<resources-licenses, licenseTypes resources>>"),
                                 subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
                         )));
     }

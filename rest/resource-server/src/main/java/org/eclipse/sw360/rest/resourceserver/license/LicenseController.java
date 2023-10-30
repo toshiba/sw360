@@ -20,6 +20,7 @@ import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
+import org.eclipse.sw360.datahandler.thrift.licenses.LicenseType;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.core.HalResource;
@@ -56,6 +57,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class LicenseController implements RepresentationModelProcessor<RepositoryLinksResource> {
     public static final String LICENSES_URL = "/licenses";
+    public static final String LICENSE_TYPES_URL = "/licenseTypes";
 
     @NonNull
     private final Sw360LicenseService licenseService;
@@ -78,6 +80,20 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
         }
 
         CollectionModel<EntityModel<License>> resources = CollectionModel.of(licenseResources);
+        return new ResponseEntity<>(resources, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = LICENSE_TYPES_URL, method = RequestMethod.GET)
+    public ResponseEntity<CollectionModel<EntityModel<LicenseType>>> getLicenseTypes() throws TException {
+        List<LicenseType> sw360LicenseTypes = licenseService.getLicenseTypes();
+
+        List<EntityModel<LicenseType>> licenseTypeResources = new ArrayList<>();
+        for (LicenseType sw360LicenseType : sw360LicenseTypes) {
+            LicenseType embeddedLicenseType = restControllerHelper.convertToEmbeddedLicenseType(sw360LicenseType);
+            EntityModel<LicenseType> licenseResource = EntityModel.of(embeddedLicenseType);
+            licenseTypeResources.add(licenseResource);
+        }
+        CollectionModel<EntityModel<LicenseType>> resources = CollectionModel.of(licenseTypeResources);
         return new ResponseEntity<>(resources, HttpStatus.OK);
     }
 

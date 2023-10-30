@@ -25,6 +25,7 @@ import org.eclipse.sw360.datahandler.thrift.RequestStatus;
 import org.eclipse.sw360.datahandler.thrift.RequestSummary;
 import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
+import org.eclipse.sw360.datahandler.thrift.licenses.LicenseType;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.licenses.LicenseService;
 import org.eclipse.sw360.datahandler.thrift.users.User;
@@ -175,6 +176,15 @@ public class Sw360LicenseService {
             return Collections.emptyList();
         }
         return obligations;
+    }
+
+    public List<LicenseType> getLicenseTypes() throws TException  {
+        LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
+        List<LicenseType> licenseTypes = sw360LicenseClient.getLicenseTypes();
+        if (CommonUtils.isNullOrEmptyCollection(licenseTypes)) {
+            return Collections.emptyList();
+        }
+        return licenseTypes;
     }
 
     public void checkObligationIds(Set<String> obligationIds) throws TException {
