@@ -565,7 +565,7 @@ public class LicenseDatabaseHandler {
                         Lists.newArrayList(), null, null);
                 
                 LicenseObligationList oldObligationList = new LicenseObligationList();
-                if (!resultLicense.getObligationDatabaseIds().equals(oldObligationDatabaseIds)) {
+                if (!resultLicense.getObligationDatabaseIds().equals(oldObligationDatabaseIds) && CommonUtils.isNotNullEmptyOrWhitespace(resultLicense.getObligationListId())) {
                     resultObligationList.setId(resultLicense.getObligationListId());
                     LicenseObligationList baseObligationList = obligationListRepository
                             .get(resultLicense.getObligationListId());
@@ -1027,6 +1027,9 @@ public class LicenseDatabaseHandler {
 
                 final Optional<License> spdxLicenseAsSW360License = SpdxConnector.getSpdxLicenseAsSW360License(spdxId);
                 if(spdxLicenseAsSW360License.isPresent()){
+                    if(CommonUtils.isNullOrEmptyCollection(spdxLicenseAsSW360License.get().getObligationDatabaseIds())) {
+                        spdxLicenseAsSW360License.get().setObligationDatabaseIds(new HashSet<>());
+                    }
                     newLicenses.add(spdxLicenseAsSW360License.get());
                 }else{
                     log.error("Failed to find SpdxListedLicense with id=" + spdxId);
