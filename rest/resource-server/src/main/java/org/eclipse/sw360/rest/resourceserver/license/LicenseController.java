@@ -201,7 +201,10 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
             @RequestBody Map<String, Boolean> reqBodyMaps) throws TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         License license = licenseService.getLicenseById(licenseId);
-        Set<String> obligationIdsByLicense = license.getObligationDatabaseIds();
+        Set<String> obligationIdsByLicense = new HashSet<>();
+        if (!CommonUtils.isNullOrEmptyCollection(license.getObligationDatabaseIds())) {
+            obligationIdsByLicense = license.getObligationDatabaseIds();
+        }
         Map<String, Boolean> obligationIdsRequest = reqBodyMaps.entrySet().stream()
                 .collect(Collectors.toMap(reqBodyMap-> reqBodyMap.getKey(),reqBodyMap -> reqBodyMap.getValue()));
         Set<String> obligationIds = obligationIdsRequest.keySet();
