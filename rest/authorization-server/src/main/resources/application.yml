@@ -27,6 +27,11 @@ spring:
   jackson:
     serialization:
       indent_output: true
+  ldap:
+    url: ldap://10.116.43.145:389
+    base: ou=groups,dc=test,dc=com
+    #username:
+    #password:
 
 # Common SW360 properties
 sw360:

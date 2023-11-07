@@ -13,6 +13,7 @@ import org.eclipse.sw360.datahandler.thrift.ThriftClients;
 import org.eclipse.sw360.rest.authserver.security.basicauth.Sw360LiferayAuthenticationProvider;
 import org.eclipse.sw360.rest.authserver.security.customheaderauth.Sw360CustomHeaderAuthenticationFilter;
 import org.eclipse.sw360.rest.authserver.security.customheaderauth.Sw360CustomHeaderAuthenticationProvider;
+import org.eclipse.sw360.rest.authserver.security.ldap.Sw360LdapAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -56,6 +57,7 @@ public class Sw360WebSecurityConfiguration extends WebSecurityConfigurerAdapter 
     @Override
     protected void configure(AuthenticationManagerBuilder authenticationManagerBuilder) {
         authenticationManagerBuilder
+                .authenticationProvider(sw360LdapAuthenticationProvider())
                 .authenticationProvider(sw360LiferayAuthenticationProvider())
                 .authenticationProvider(sw360CustomHeaderAuthenticationProvider());
     }
@@ -84,6 +86,11 @@ public class Sw360WebSecurityConfiguration extends WebSecurityConfigurerAdapter 
     @Bean
     protected Sw360LiferayAuthenticationProvider sw360LiferayAuthenticationProvider() {
         return new Sw360LiferayAuthenticationProvider();
+    }
+
+    @Bean
+    protected Sw360LdapAuthenticationProvider sw360LdapAuthenticationProvider() {
+        return new Sw360LdapAuthenticationProvider();
     }
 
     @Bean

@@ -35,7 +35,6 @@ import java.util.stream.Stream;
  */
 @Controller
 @RequestMapping(path = "/" + OAuthClientController.ENDPOINT_URL)
-@PreAuthorize("hasAuthority('ADMIN')")
 public class OAuthClientController {
 
     public static final String ENDPOINT_URL = "client-management";
@@ -47,6 +46,7 @@ public class OAuthClientController {
     private OAuthClientRepository repo;
 
     @RequestMapping(method = RequestMethod.GET, path = "")
+    @PreAuthorize("hasAuthority('READ')")
     public ResponseEntity<List<OAuthClientResource>> getAllClients() {
         List<OAuthClientResource> clientResources;
 
@@ -60,6 +60,7 @@ public class OAuthClientController {
         return new ResponseEntity<List<OAuthClientResource>>(clientResources, HttpStatus.OK);
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     @RequestMapping(method = RequestMethod.POST, path = "", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createOrUpdateClient(@RequestBody OAuthClientResource clientResource) {
         OAuthClientEntity clientEntity = null;
@@ -87,6 +88,7 @@ public class OAuthClientController {
                 new OAuthClientResource(repo.getByClientId(clientEntity.getClientId())), HttpStatus.OK);
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     @RequestMapping(method = RequestMethod.DELETE, path = "/{clientId}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> deleteClient(@PathVariable("clientId") String clientId) {
         OAuthClientEntity clientEntity = null;

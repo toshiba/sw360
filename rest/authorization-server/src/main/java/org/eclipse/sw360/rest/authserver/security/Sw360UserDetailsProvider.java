@@ -11,12 +11,14 @@ package org.eclipse.sw360.rest.authserver.security;
 
 import org.eclipse.sw360.datahandler.thrift.ThriftClients;
 import org.eclipse.sw360.datahandler.thrift.users.User;
+import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
 import org.eclipse.sw360.datahandler.thrift.users.UserService;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
+import org.eclipse.sw360.rest.authserver.security.ldap.LdapUser;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -58,5 +60,23 @@ public class Sw360UserDetailsProvider {
             // do nothing
         }
         return null;
+    }
+
+    public void createUserFromLdapUser(LdapUser ldapUser) {
+        UserService.Iface client = thriftClients.makeUserClient();
+        try {
+            if (StringUtils.isNotEmpty(ldapUser.getMail())) {
+                User user = new User();
+                user.setEmail(ldapUser.getMail());
+                user.setDepartment("LDAP-USER");
+                user.setGivenname(ldapUser.getGivenName());
+                user.setLastname(ldapUser.getName());
+                user.setExternalid(ldapUser.getUid());
+                user.setUserGroup(UserGroup.USER);
+                client.addUser(user);
+            }
+        } catch (TException e) {
+            log.error("Error when create user");
+        }
     }
 }
