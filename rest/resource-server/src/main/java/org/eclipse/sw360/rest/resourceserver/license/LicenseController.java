@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -132,6 +133,10 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
     public ResponseEntity<EntityModel<License>> createLicense(
             @RequestBody License license) throws TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        List<License> sw360Licenses = licenseService.getLicenses();
+        if(restControllerHelper.checkDuplicateLicense(sw360Licenses, license.shortname)) {
+            return new ResponseEntity("sw360 component with name" + license.shortname +"already exists.", HttpStatus.CONFLICT);
+        }
         license = licenseService.createLicense(license, sw360User);
         HalResource<License> halResource = createHalLicense(license);
 

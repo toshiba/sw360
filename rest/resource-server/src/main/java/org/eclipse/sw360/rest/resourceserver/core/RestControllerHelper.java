@@ -472,6 +472,10 @@ public class RestControllerHelper<T> {
         }
     }
 
+    public boolean checkDuplicateLicense(List<License> licenses, String licenseId) {
+        return licenses.stream().anyMatch(licenseCheck -> licenseCheck.getShortname().equalsIgnoreCase(licenseId));
+    }
+
     private HalResource<License> addEmbeddedLicense(String licenseId) {
         License embeddedLicense = convertToEmbeddedLicense(licenseId);
         HalResource<License> halLicense = new HalResource<>(embeddedLicense);
