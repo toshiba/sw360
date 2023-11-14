@@ -104,11 +104,9 @@ public class Sw360LicenseService {
     public License createLicense(License license, User sw360User) throws TException {
         LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
         license.setId(license.getShortname());
-        List<License> licenses = sw360LicenseClient.addLicenses(Collections.singletonList(license), sw360User);
-        for (License newLicense : licenses) {
-            if (license.getFullname().equals(newLicense.getFullname())) {
-                return newLicense;
-            }
+        RequestStatus requestStatus = sw360LicenseClient.updateLicense(license, sw360User, sw360User);
+        if (requestStatus == RequestStatus.SUCCESS) {
+            return license;
         }
         return null;
     }
