@@ -18,7 +18,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.CommonUtils;
+import org.eclipse.sw360.datahandler.common.SW360Constants;
+import org.eclipse.sw360.datahandler.resourcelists.PaginationParameterException;
+import org.eclipse.sw360.datahandler.resourcelists.PaginationResult;
+import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundException;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
 import org.eclipse.sw360.datahandler.thrift.licenses.LicenseType;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
@@ -26,6 +31,7 @@ import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.core.HalResource;
 import org.eclipse.sw360.rest.resourceserver.core.RestControllerHelper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.rest.webmvc.BasePathAwareController;
 import org.springframework.data.rest.webmvc.RepositoryLinksResource;
 import org.springframework.hateoas.EntityModel;
@@ -70,17 +76,22 @@ public class LicenseController implements RepresentationModelProcessor<Repositor
             .put("message", "Moderation request is created").build();
 
     @RequestMapping(value = LICENSES_URL, method = RequestMethod.GET)
-    public ResponseEntity<CollectionModel<EntityModel<License>>> getLicenses() throws TException {
+    public ResponseEntity<CollectionModel> getLicenses(Pageable pageable, HttpServletRequest request) throws TException, ResourceClassNotFoundException, PaginationParameterException, URISyntaxException {
         List<License> sw360Licenses = licenseService.getLicenses();
-
+        PaginationResult<License> paginationResult = restControllerHelper.createPaginationResult(request, pageable, sw360Licenses, SW360Constants.TYPE_LICENSE);
         List<EntityModel<License>> licenseResources = new ArrayList<>();
-        for (License sw360License : sw360Licenses) {
-            License embeddedLicense = restControllerHelper.convertToEmbeddedLicense(sw360License);
-            EntityModel<License> licenseResource = EntityModel.of(embeddedLicense);
-            licenseResources.add(licenseResource);
+        paginationResult.getResources().stream()
+                .forEach(license -> {
+                    License embeddedLicense = restControllerHelper.convertToEmbeddedLicense(license);
+                    EntityModel<License> licenseResource = EntityModel.of(embeddedLicense);
+                    licenseResources.add(licenseResource);
+                });
+        CollectionModel resources;
+        if (licenseResources.size() == 0) {
+            resources = restControllerHelper.emptyPageResource(License.class, paginationResult);
+        } else {
+            resources = restControllerHelper.generatePagesResource(paginationResult, licenseResources);
         }
-
-        CollectionModel<EntityModel<License>> resources = CollectionModel.of(licenseResources);
         return new ResponseEntity<>(resources, HttpStatus.OK);
     }
 

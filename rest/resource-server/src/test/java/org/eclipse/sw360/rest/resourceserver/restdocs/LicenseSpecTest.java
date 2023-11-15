@@ -139,15 +139,28 @@ public class LicenseSpecTest extends TestRestDocsSpecBase {
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         mockMvc.perform(get("/api/licenses")
                 .header("Authorization", "Bearer " + accessToken)
+                .param("page", "0")
+                .param("page_entries", "5")
                 .accept(MediaTypes.HAL_JSON))
                 .andExpect(status().isOk())
                 .andDo(this.documentationHandler.document(
+                        requestParameters(
+                                parameterWithName("page").description("Page of licenses"),
+                                parameterWithName("page_entries").description("Amount of licenses per page")
+                        ),
                         links(
-                                linkWithRel("curies").description("Curies are used for online documentation")
+                                linkWithRel("curies").description("Curies are used for online documentation"),
+                                linkWithRel("first").description("Link to first page"),
+                                linkWithRel("last").description("Link to last page")
                         ),
                         responseFields(
                                 subsectionWithPath("_embedded.sw360:licenses").description("An array of <<resources-licenses, Licenses resources>>"),
-                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources")
+                                subsectionWithPath("_links").description("<<resources-index-links,Links>> to other resources"),
+                                fieldWithPath("page").description("Additional paging information"),
+                                fieldWithPath("page.size").description("Number of licenses per page"),
+                                fieldWithPath("page.totalElements").description("Total number of all existing licenses"),
+                                fieldWithPath("page.totalPages").description("Total number of pages"),
+                                fieldWithPath("page.number").description("Number of the current page")
                         )));
     }
 
