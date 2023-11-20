@@ -24,6 +24,7 @@ import org.eclipse.sw360.datahandler.thrift.changelogs.ChangeLogs;
 import org.eclipse.sw360.datahandler.thrift.components.Component;
 import org.eclipse.sw360.datahandler.thrift.components.Release;
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
+import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.moderation.ModerationRequest;
 import org.eclipse.sw360.datahandler.thrift.packages.Package;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
@@ -37,6 +38,7 @@ public class ResourceComparatorGenerator<T> {
     private static final Map<Release._Fields, Comparator<Release>> releaseMap = generateReleaseMap();
     private static final Map<Package._Fields, Comparator<Package>> packageMap = generatePackageMap();
     private static final Map<License._Fields, Comparator<License>> licenseMap = generateLicenseMap();
+    private static final Map<Obligation._Fields, Comparator<Obligation>> obligationMap = generateObligationMap();
     private static final Map<SearchResult._Fields, Comparator<SearchResult>> searchResultMap = generateSearchResultMap();
     private static final Map<ChangeLogs._Fields, Comparator<ChangeLogs>> changeLogMap = generateChangeLogMap();
     private static final Map<VulnerabilityDTO._Fields, Comparator<VulnerabilityDTO>> vDtoMap = generateVulDtoMap();
@@ -78,6 +80,12 @@ public class ResourceComparatorGenerator<T> {
         Map<License._Fields, Comparator<License>> licenseMap = new HashMap<>();
         licenseMap.put(License._Fields.FULLNAME, Comparator.comparing(License::getShortname, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER)));
         return Collections.unmodifiableMap(licenseMap);
+    }
+
+    private static Map<Obligation._Fields, Comparator<Obligation>> generateObligationMap() {
+        Map<Obligation._Fields, Comparator<Obligation>> obligationMap = new HashMap<>();
+        obligationMap.put(Obligation._Fields.TITLE, Comparator.comparing(Obligation::getTitle, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER)));
+        return Collections.unmodifiableMap(obligationMap);
     }
 
     private static Map<SearchResult._Fields, Comparator<SearchResult>> generateSearchResultMap() {
@@ -136,6 +144,8 @@ public class ResourceComparatorGenerator<T> {
                 return (Comparator<T>)defaultPackageComparator();
             case SW360Constants.TYPE_LICENSE:
                 return (Comparator<T>)defaultLicenseComparator();
+            case SW360Constants.TYPE_OBLIGATION:
+                return (Comparator<T>)defaultObligationComparator();
             default:
                 throw new ResourceClassNotFoundException("No default comparator for resource class with name " + type);
         }
@@ -396,5 +406,9 @@ public class ResourceComparatorGenerator<T> {
 
     private Comparator<License> defaultLicenseComparator() {
         return licenseMap.get(License._Fields.FULLNAME);
+    }
+
+    private Comparator<Obligation> defaultObligationComparator() {
+        return obligationMap.get(Obligation._Fields.TITLE);
     }
 }
