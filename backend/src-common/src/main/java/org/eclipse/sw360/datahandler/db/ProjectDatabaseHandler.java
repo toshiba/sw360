@@ -84,6 +84,7 @@ import static org.eclipse.sw360.datahandler.common.SW360Assert.fail;
 import static org.eclipse.sw360.datahandler.common.SW360Utils.getBUFromOrganisation;
 import static org.eclipse.sw360.datahandler.common.SW360Utils.getCreatedOn;
 import static org.eclipse.sw360.datahandler.common.SW360Utils.printName;
+import static org.eclipse.sw360.datahandler.common.WrappedException.wrapSW360Exception;
 import static org.eclipse.sw360.datahandler.common.WrappedException.wrapTException;
 import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
 import org.eclipse.sw360.exporter.ProjectExporter;
@@ -2229,17 +2230,23 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
         String releaseNetwork = projectById.getReleaseRelationNetwork();
         List<ReleaseNode> listReleaseLinkJson;
-        try {
-            listReleaseLinkJson = mapper.readValue(releaseNetwork, new TypeReference<List<ReleaseNode>>() {
-            });
-            flattenLinkedReleaseOfRelease(listReleaseLinkJson, projectOrigin, releaseOrigin, clearingStatusList, user, isInaccessibleLinkMasked);
-        } catch (JsonProcessingException e) {
-            log.error("JsonProcessingException: " + e);
+        if (releaseNetwork != null) {
+            try {
+                listReleaseLinkJson = mapper.readValue(releaseNetwork, new TypeReference<List<ReleaseNode>>() {
+                });
+                flattenLinkedReleaseOfRelease(listReleaseLinkJson, projectOrigin, releaseOrigin, clearingStatusList, user, isInaccessibleLinkMasked);
+            } catch (JsonProcessingException e) {
+                log.error("JsonProcessingException: " + e);
+            }
         }
 
         if (linkedProjects != null && !linkedProjects.isEmpty()) {
-            flattenDependencyNetworkForLinkedProject(linkedProjects, projectOrigin, releaseOrigin, clearingStatusList,
-                    user, isInaccessibleLinkMasked);
+            try {
+                flattenDependencyNetworkForLinkedProject(linkedProjects, projectOrigin, releaseOrigin, clearingStatusList,
+                        user, isInaccessibleLinkMasked);
+            } catch (WrappedException.WrappedSW360Exception exception) {
+                throw new SW360Exception(exception.getCause());
+            }
         }
 
         return clearingStatusList;
@@ -2277,9 +2284,9 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
     private void flattenDependencyNetworkForLinkedProject(Map<String, ProjectProjectRelationship> linkedProjects,
                                                           LinkedHashMap<String, String> projectOrigin, LinkedHashMap<String, String> releaseOrigin,
-                                                          List<Map<String, String>> clearingStatusList, User user, boolean isInaccessibleLinkMasked) {
+                                                          List<Map<String, String>> clearingStatusList, User user, boolean isInaccessibleLinkMasked) throws WrappedException.WrappedSW360Exception {
 
-        linkedProjects.entrySet().stream().forEach(lp -> wrapTException(() -> {
+        linkedProjects.entrySet().stream().forEach(lp -> wrapSW360Exception(() -> {
             String projId = lp.getKey();
             String relation = ThriftEnumUtils.enumToString(lp.getValue().getProjectRelationship());
             if (projectOrigin.containsKey(projId))
@@ -2291,17 +2298,23 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
             String releaseNetwork = linkedProjectById.getReleaseRelationNetwork();
             List<ReleaseNode> listReleaseLinkJson;
-            try {
-                listReleaseLinkJson = mapper.readValue(releaseNetwork, new TypeReference<List<ReleaseNode>>() {
-                });
-                flattenLinkedReleaseOfRelease(listReleaseLinkJson, projectOrigin, releaseOrigin, clearingStatusList, user, isInaccessibleLinkMasked);
-            } catch (JsonProcessingException e) {
-                log.error("JsonProcessingException: " + e);
+            if (releaseNetwork != null) {
+                try {
+                    listReleaseLinkJson = mapper.readValue(releaseNetwork, new TypeReference<List<ReleaseNode>>() {
+                    });
+                    flattenLinkedReleaseOfRelease(listReleaseLinkJson, projectOrigin, releaseOrigin, clearingStatusList, user, isInaccessibleLinkMasked);
+                } catch (JsonProcessingException e) {
+                    log.error("JsonProcessingException: " + e);
+                }
             }
 
             if (subprojects != null && !subprojects.isEmpty()) {
-                flattenClearingStatusForLinkedProject(subprojects, projectOrigin, releaseOrigin, clearingStatusList,
-                        user, isInaccessibleLinkMasked);
+                try {
+                    flattenDependencyNetworkForLinkedProject(subprojects, projectOrigin, releaseOrigin, clearingStatusList,
+                            user, isInaccessibleLinkMasked);
+                } catch (WrappedException.WrappedSW360Exception exception) {
+                    throw new SW360Exception(exception.getCause());
+                }
             }
 
             projectOrigin.remove(projId);
