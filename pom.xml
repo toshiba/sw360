@@ -139,7 +139,7 @@
     <liferay.css.builder.version>3.1.2</liferay.css.builder.version>
     <liferay.frontend.css.common.version>6.0.3</liferay.frontend.css.common.version>
     <liferay.frontend.theme.styled.version>6.0.27</liferay.frontend.theme.styled.version>
-    <liferay.frontend.theme.unstyled.version>6.0.29</liferay.frontend.theme.unstyled.version>
+    <liferay.frontend.theme.unstyled.version>6.0.59</liferay.frontend.theme.unstyled.version>
     <liferay.petra.function.version>5.1.2</liferay.petra.function.version>
     <liferay.portal.kernel.version>43.0.1</liferay.portal.kernel.version>
     <liferay.portal.tools.theme.builder.version>1.1.9</liferay.portal.tools.theme.builder.version>
@@ -803,8 +803,8 @@
           <ratchetFrom>origin/main</ratchetFrom>
           <formats>
             <format>
-              <trimTrailingWhitespace />
-              <endWithNewline />
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
               <includes>
                 <include>*.java</include>
               </includes>
@@ -826,11 +826,11 @@
               <includes>
                 <include>**/*.md</include>
               </includes>
-              <flexmark></flexmark>
+              <flexmark/>
             </markdown>
           </configuration>
           <java>
-            <eclipse></eclipse>
+            <eclipse/>
           </java>
         </configuration>
       </plugin>
