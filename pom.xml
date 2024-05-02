@@ -147,7 +147,7 @@
     <liferay.util.java.version>17.1.2</liferay.util.java.version>
     <liferay.util.taglib.version>8.4.8</liferay.util.taglib.version>
     <maven-javadoc.version>3.6.2</maven-javadoc.version>
-    <log4j2.version>2.19.0</log4j2.version>
+    <log4j2.version>2.23.1</log4j2.version>
     <lucene.version>6.6.6</lucene.version>
     <mockito.version>4.7.0</mockito.version>
     <okhttp.version>4.10.0</okhttp.version>
@@ -803,8 +803,8 @@
           <ratchetFrom>origin/main</ratchetFrom>
           <formats>
             <format>
-              <trimTrailingWhitespace />
-              <endWithNewline />
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
               <includes>
                 <include>*.java</include>
               </includes>
@@ -826,11 +826,11 @@
               <includes>
                 <include>**/*.md</include>
               </includes>
-              <flexmark></flexmark>
+              <flexmark/>
             </markdown>
           </configuration>
           <java>
-            <eclipse></eclipse>
+            <eclipse/>
           </java>
         </configuration>
       </plugin>
