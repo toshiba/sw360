@@ -36,12 +36,7 @@ import org.eclipse.sw360.datahandler.thrift.licenses.LicenseType;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.moderation.ModerationRequest;
 import org.eclipse.sw360.datahandler.thrift.packages.Package;
-import org.eclipse.sw360.datahandler.thrift.projects.ClearingRequest;
-import org.eclipse.sw360.datahandler.thrift.projects.Project;
-import org.eclipse.sw360.datahandler.thrift.projects.ProjectProjectRelationship;
-import org.eclipse.sw360.datahandler.thrift.projects.ProjectState;
-import org.eclipse.sw360.datahandler.thrift.projects.ProjectType;
-import org.eclipse.sw360.datahandler.thrift.projects.ProjectDTO;
+import org.eclipse.sw360.datahandler.thrift.projects.*;
 import org.eclipse.sw360.datahandler.thrift.search.SearchResult;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.vendors.Vendor;
@@ -117,6 +112,7 @@ public class JacksonCustomizations {
             setMixInAnnotation(EmbeddedProjectDTO.class, Sw360Module.EmbeddedProjectDTOMixin.class);
             setMixInAnnotation(ReleaseNode.class, Sw360Module.ReleaseNodeMixin.class);
             setMixInAnnotation(RestrictedResource.class, Sw360Module.RestrictedResourceMixin.class);
+            setMixInAnnotation(ProjectLink.class, Sw360Module.ProjectLinkMixin.class);
 
             // Make spring doc aware of the mixin(s)
             SpringDocUtils.getConfig()
@@ -166,7 +162,8 @@ public class JacksonCustomizations {
                     .replaceWithClass(ProjectDTO.class, ProjectDTOMixin.class)
                     .replaceWithClass(EmbeddedProjectDTO.class, EmbeddedProjectDTOMixin.class)
                     .replaceWithClass(ReleaseNode.class, ReleaseNodeMixin.class)
-                    .replaceWithClass(RestrictedResource.class, RestrictedResourceMixin.class);
+                    .replaceWithClass(RestrictedResource.class, RestrictedResourceMixin.class)
+                    .replaceWithClass(ProjectLink.class, ProjectLinkMixin.class);
         }
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -908,11 +905,9 @@ public class JacksonCustomizations {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @JsonIgnoreProperties({
                 "nodeId",
+                "layer",
                 "parentNodeId",
-                "componentType",
                 "licenseNames",
-                "comment",
-                "otherLicenseIds",
                 "attachmentsSize",
                 "setName",
                 "setVersion",
@@ -939,8 +934,14 @@ public class JacksonCustomizations {
                 "setLicenseNames",
                 "setAccessible",
                 "setId",
-                "setClearingReport"
-
+                "setClearingReport",
+                "setReleaseWithSameComponent",
+                "setLayer",
+                "setDefaultValue",
+                "setReleaseMainLineState",
+                "setIndex",
+                "setProjectId",
+                "releaseWithSameComponentSize",
         })
         static abstract class ReleaseLinkMixin extends ReleaseLink {
 
@@ -2188,5 +2189,30 @@ public class JacksonCustomizations {
         })
         public abstract static class RestrictedResourceMixin extends RestrictedResource {
         }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties({
+                "nodeId",
+                "treeLevel",
+                "parentNodeId",
+                "setId",
+                "setName",
+                "setSubprojects",
+                "setNodeId",
+                "setParentNodeId",
+                "setVersion",
+                "setClearingState",
+                "setState",
+                "setProjectType",
+                "setEnableSvm",
+                "linkedReleasesSize",
+                "setRelation",
+                "linkedReleasesIterator",
+                "setLinkedReleases",
+                "subprojectsSize",
+                "subprojectsIterator",
+                "setTreeLevel",
+        })
+        abstract static class ProjectLinkMixin extends ProjectLink {}
     }
 }

@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.jena.shared.NotFoundException;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.common.utils.BackendUtils;
 import org.eclipse.sw360.components.summary.SummaryType;
@@ -70,6 +71,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -86,7 +88,7 @@ import static org.eclipse.sw360.datahandler.common.SW360Utils.getCreatedOn;
 import static org.eclipse.sw360.datahandler.common.SW360Utils.printName;
 import static org.eclipse.sw360.datahandler.common.WrappedException.wrapTException;
 import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
-import org.apache.commons.io.IOUtils;
+
 import org.eclipse.sw360.exporter.ProjectExporter;
 import java.nio.ByteBuffer;
 
@@ -2197,9 +2199,12 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
             executor.shutdown();
         }
 
+        AtomicInteger index = new AtomicInteger();
         return releaseLinksFuture.stream().map(fut -> {
             try {
-                return fut.get();
+                ReleaseLink releaseLink = fut.get();
+                releaseLink.setIndex(index.getAndIncrement());
+                return releaseLink;
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException("Error when convert releaseLink: " + e.getMessage());
             }
@@ -2452,38 +2457,65 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
 
     protected ReleaseLink convertReleaseNodeToReleaseLink(ReleaseNode releaseNode, String projectId, User user, String parentId, int layer) throws TException {
         Release releaseById = componentDatabaseHandler.getRelease(releaseNode.getReleaseId(), user);
+
         ReleaseLink releaseLink = new ReleaseLink();
+        boolean isAccessible = componentDatabaseHandler.isReleaseActionAllowed(releaseById, user, RequestedAction.READ);
         releaseLink.setId(releaseNode.getReleaseId());
-        releaseLink.setReleaseRelationship(ReleaseRelationship.valueOf(releaseNode.getReleaseRelationship()));
-        releaseLink.setMainlineState(MainlineState.valueOf(releaseNode.getMainlineState()));
-        releaseLink.setComment(releaseNode.getComment());
+        releaseLink.setAccessible(isAccessible);
+        releaseLink.setName(isAccessible ? releaseById.getName() : "");
+        releaseLink.setVersion(isAccessible ? releaseById.getVersion() : "");
+        releaseLink.setLayer(layer);
+        releaseLink.setLongName(isAccessible ? SW360Utils.printFullname(releaseById) : "Restricted release");
         releaseLink.setHasSubreleases(!releaseNode.getReleaseLink().isEmpty());
-        releaseLink.setName(releaseById.getName());
-        releaseLink.setVersion(releaseById.getVersion());
-        releaseLink.setLongName(SW360Utils.printFullname(releaseById));
-        releaseLink.setClearingState(releaseById.getClearingState());
-        releaseLink.setLicenseIds(releaseById.getMainLicenseIds());
-        releaseLink.setOtherLicenseIds(releaseById.getOtherLicenseIds());
-        releaseLink.setAccessible(componentDatabaseHandler.isReleaseActionAllowed(releaseById, user, RequestedAction.READ));
         releaseLink.setNodeId(releaseById.getId() + "_" + UUID.randomUUID());
         releaseLink.setParentNodeId(parentId);
-        releaseLink.setLayer(layer);
         releaseLink.setProjectId(projectId);
-        releaseLink.setReleaseMainLineState(releaseById.getMainlineState());
-        releaseLink.setAttachments(releaseById.getAttachments() != null ? Lists.newArrayList(releaseById.getAttachments()) : Collections.emptyList());
+        releaseLink.setVendor((isAccessible && releaseById.getVendor() != null) ? releaseById.getVendor().getFullname() : "");
 
-        if (releaseById.getVendor() != null) {
-            releaseLink.setVendor(releaseById.getVendor().getFullname());
-        } else {
-            releaseLink.setVendor("");
+        if (isAccessible) {
+            releaseLink.setReleaseRelationship(ReleaseRelationship.valueOf(releaseNode.getReleaseRelationship()));
+            releaseLink.setMainlineState(MainlineState.valueOf(releaseNode.getMainlineState()));
+            releaseLink.setComment(releaseNode.getComment());
+            releaseLink.setClearingState(releaseById.getClearingState());
+            releaseLink.setLicenseIds(releaseById.getMainLicenseIds());
+            releaseLink.setOtherLicenseIds(releaseById.getOtherLicenseIds());
+            releaseLink.setReleaseMainLineState(releaseById.getMainlineState());
+            releaseLink.setAttachments(releaseById.getAttachments() != null ? Lists.newArrayList(releaseById.getAttachments()) : Collections.emptyList());
+            if (releaseById.getComponentType() != null) {
+                releaseLink.setComponentType(releaseById.getComponentType());
+            } else {
+                Component componentById = componentDatabaseHandler.getComponent(releaseById.getComponentId(), user);
+                releaseLink.setComponentType(componentById.getComponentType());
+            }
         }
 
-        if (releaseById.getComponentType() != null) {
-            releaseLink.setComponentType(releaseById.getComponentType());
-        } else {
-            Component componentById = componentDatabaseHandler.getComponent(releaseById.getComponentId(), user);
-            releaseLink.setComponentType(componentById.getComponentType());
-        }
         return releaseLink;
+    }
+
+    public List<ReleaseLink> getReleaseLinksOfProjectNetWorkByIndexPath(List<String> indexPath, String projectId, User user) throws SW360Exception {
+        Project project = getProjectById(projectId, user);
+
+        if (project == null) {
+            throw new SW360Exception("Project not found: " + projectId).setErrorCode(404);
+        }
+
+        String releaseNetwork = project.getReleaseRelationNetwork();
+        List<ReleaseNode> releaseNodes;
+        List<ReleaseLink> linkedReleases = new ArrayList<>();
+        try {
+            releaseNodes = mapper.readValue(releaseNetwork, new TypeReference<List<ReleaseNode>>() {
+            });
+            ReleaseNode previousNode = releaseNodes.get(Integer.parseInt(indexPath.get(0)));
+            for (int i = 1; i < indexPath.size(); i++){
+                previousNode = previousNode.getReleaseLink().get(Integer.parseInt(indexPath.get(i)));
+            }
+            linkedReleases = convertReleaseNodesToReleaseLinksParallel(previousNode.getReleaseLink(), projectId, user);
+        } catch (JsonProcessingException e) {
+            log.error("JsonProcessingException: " + e);
+        } catch (IndexOutOfBoundsException exception) {
+            throw new SW360Exception("Index path is incorrect").setErrorCode(400);
+        }
+
+        return linkedReleases;
     }
 }

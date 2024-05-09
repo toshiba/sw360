@@ -58,16 +58,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -571,5 +563,18 @@ public class Sw360ProjectService implements AwareOfRestServices<Project> {
             log.error(e.getMessage());
             return 0;
         }
+    }
+
+    public ProjectLink serveLinkedResourcesOfProjectInDependencyNetwork(String projectId, boolean transitive, User sw360User) throws TException {
+        Project project = getProjectForUserById(projectId, sw360User);
+        final Collection<ProjectLink> linkedProjects = (!transitive)
+                ? SW360Utils.getLinkedProjectsAsFlatList(project, false, new ThriftClients(), log, sw360User)
+                : SW360Utils.getLinkedProjectsWithAllReleasesAsFlatList(project, false, new ThriftClients(), log, sw360User);
+        return new ArrayList<>(linkedProjects).get(0);
+    }
+
+    public List<ReleaseLink> serveLinkedReleasesInDependencyNetworkByIndexPath(String projectId, List<String> indexPath, User sw360User) throws TException {
+        ProjectService.Iface sw360ProjectClient = getThriftProjectClient();
+        return sw360ProjectClient.getReleaseLinksOfProjectNetWorkByIndexPath(projectId, indexPath, sw360User);
     }
 }
