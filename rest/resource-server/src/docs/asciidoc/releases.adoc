@@ -558,3 +558,14 @@ include::{snippets}/should_document_load_release_assessment_summary_information/
 
 ===== Example response
 include::{snippets}/should_document_load_release_assessment_summary_information/http-response.adoc[]
+
+[[resources-get-sources-files-of-licenses-in-release]]
+==== Get sources files of licenses in release
+
+A `GET` request will get sources files of licenses in release
+
+===== Example request
+include::{snippets}/should_document_load_sources_file_of_licenses_in_release/curl-request.adoc[]
+
+===== Example response
+include::{snippets}/should_document_load_sources_file_of_licenses_in_release/http-response.adoc[]

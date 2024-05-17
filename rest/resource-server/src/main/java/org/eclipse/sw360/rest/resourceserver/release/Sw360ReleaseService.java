@@ -12,6 +12,7 @@
 
 package org.eclipse.sw360.rest.resourceserver.release;
 
+import java.util.function.Predicate;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +31,13 @@ import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.ThriftClients;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
 import org.eclipse.sw360.datahandler.thrift.attachments.AttachmentType;
+import org.eclipse.sw360.datahandler.thrift.attachments.CheckStatus;
 import org.eclipse.sw360.datahandler.thrift.components.*;
 import org.eclipse.sw360.datahandler.thrift.fossology.FossologyService;
+import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseInfoParsingResult;
+import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseInfoRequestStatus;
+import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseInfoService;
+import org.eclipse.sw360.datahandler.thrift.licenseinfo.LicenseNameWithText;
 import org.eclipse.sw360.datahandler.thrift.projects.Project;
 import org.eclipse.sw360.datahandler.thrift.projects.ProjectService;
 import org.eclipse.sw360.datahandler.thrift.users.User;
@@ -57,6 +63,7 @@ import com.google.common.collect.Sets;
 
 import static org.eclipse.sw360.datahandler.common.CommonUtils.isNullEmptyOrWhitespace;
 import static org.eclipse.sw360.datahandler.common.CommonUtils.nullToEmptyString;
+import static org.eclipse.sw360.datahandler.common.SW360Utils.printName;
 import static org.eclipse.sw360.datahandler.common.WrappedException.wrapTException;
 import static org.eclipse.sw360.datahandler.permissions.PermissionUtils.makePermission;
 
@@ -729,5 +736,66 @@ public class Sw360ReleaseService implements AwareOfRestServices<Release> {
     public List<Release> refineSearch(String searchText, User sw360User) throws TException {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
         return sw360ComponentClient.searchAccessibleReleases(searchText, sw360User);
+    }
+
+    public Map<String, Object> serveLicensesToSourceFilesMapping(String releaseId, User sw360User) throws TException {
+        final LicenseInfoService.Iface licenseClient = new ThriftClients().makeLicenseInfoClient();
+        final Map<String, Object> result = new HashMap<>();
+        final Predicate<Attachment> isCLI = attachment -> AttachmentType.COMPONENT_LICENSE_INFO_XML.equals(attachment.getAttachmentType())
+                || AttachmentType.COMPONENT_LICENSE_INFO_COMBINED.equals(attachment.getAttachmentType());
+
+        Release release = getReleaseForUserById(releaseId, sw360User);
+        List<Attachment> filteredAttachments = CommonUtils.nullToEmptySet(release.getAttachments()).stream().filter(isCLI).collect(Collectors.toList());
+        if (filteredAttachments.size() > 1) {
+            Predicate<Attachment> isApprovedCLI = attachment -> CheckStatus.ACCEPTED.equals(attachment.getCheckStatus());
+            filteredAttachments = filteredAttachments.stream().filter(isApprovedCLI).collect(Collectors.toList());
+        }
+        if (filteredAttachments.size() == 1 && filteredAttachments.get(0).getFilename().endsWith(SW360Constants.XML_FILE_EXTENSION)) {
+            final Attachment filteredAttachment = filteredAttachments.get(0);
+            final String attachmentContentId = filteredAttachment.getAttachmentContentId();
+
+            try {
+                List<LicenseInfoParsingResult> licenseResults = licenseClient.getLicenseInfoForAttachment(release, attachmentContentId, false, sw360User);
+                if (CommonUtils.isNotEmpty(licenseResults) && LicenseInfoRequestStatus.SUCCESS.equals(licenseResults.get(0).getStatus())) {
+                    Set<LicenseNameWithText> licenseNameWithTexts = licenseResults.get(0).getLicenseInfo().getLicenseNamesWithTexts();
+                    if (CommonUtils.isNotEmpty(licenseNameWithTexts)) {
+                        List<Map<String, Object>> licensesToSourcesData = new ArrayList<>();
+                        for (LicenseNameWithText license : licenseNameWithTexts) {
+                            Map<String, Object> licenseToSources = new HashMap<>();
+                            licenseToSources.put("licenseName", nullToEmptyString(license.getLicenseName()));
+                            licenseToSources.put("licenseSpdxId", nullToEmptyString(license.getLicenseSpdxId()));
+                            licenseToSources.put("sourcesFiles",  license.getSourceFiles());
+                            licenseToSources.put("licenseType", SW360Constants.LICENSE_TYPE_GLOBAL.equalsIgnoreCase(license.getType()) ? SW360Constants.LICENSE_TYPE_GLOBAL : SW360Constants.LICENSE_TYPE_OTHERS);
+                            licensesToSourcesData.add(licenseToSources);
+                        }
+                        result.put(SW360Constants.STATUS, SW360Constants.SUCCESS);
+                        result.put("licensesData", licensesToSourcesData);
+                        result.put("attachmentName", nullToEmptyString(filteredAttachment.getFilename()));
+                    } else {
+                        result.put(SW360Constants.STATUS, SW360Constants.FAILURE);
+                        result.put(SW360Constants.MESSAGE, "Source file information not found in CLI");
+                    }
+                } else {
+                    result.put(SW360Constants.STATUS, SW360Constants.FAILURE);
+                    result.put(SW360Constants.MESSAGE, licenseResults.get(0).getMessage());
+                }
+            } catch (TException exception) {
+                log.error(String.format("Error fetching license Information for attachment: %s in release: %s",
+                        filteredAttachment.getFilename(), releaseId), exception);
+            }
+        } else {
+            result.put(SW360Constants.STATUS, SW360Constants.FAILURE);
+            if (filteredAttachments.size() > 1) {
+                result.put(SW360Constants.MESSAGE, "Multiple approved CLI are found in the release");
+            } else if (filteredAttachments.isEmpty()) {
+                result.put(SW360Constants.MESSAGE, "CLI attachment not found in the release");
+            } else {
+                result.put(SW360Constants.MESSAGE, "Source file information not found in CLI");
+            }
+        }
+
+        result.put("releaseId", releaseId);
+        result.put("releaseName", nullToEmptyString(printName(release)));
+        return result;
     }
 }

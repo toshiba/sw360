@@ -1312,6 +1312,21 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         return new ResponseEntity<>(responseBody, HttpStatus.OK);
     }
 
+    @Operation(
+            summary = "Get sources files of licenses in .",
+            description = "Get sources files of licenses in release.",
+            tags = {"Releases"}
+    )
+    @GetMapping(value = RELEASES_URL + "/{id}/licensesToSourceFiles")
+    public ResponseEntity<Map<String, Object>> viewLicenseToSourceFilesMapping(
+            @Parameter(description = "The ID of the release.")
+            @PathVariable("id") String releaseId
+    ) throws TException {
+        User sw360User = restControllerHelper.getSw360UserFromAuthentication();
+        Map<String, Object> licensesToSourceFilesMapping = releaseService.serveLicensesToSourceFilesMapping(releaseId, sw360User);
+        return new ResponseEntity<>(licensesToSourceFilesMapping, HttpStatus.OK);
+    }
+
     private RequestStatus linkOrUnlinkPackages(String id, Set<String> packagesInRequestBody, boolean link)
             throws URISyntaxException, TException {
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();

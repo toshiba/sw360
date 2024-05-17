@@ -9,6 +9,7 @@
  */
 package org.eclipse.sw360.rest.resourceserver.restdocs;
 
+import static org.eclipse.sw360.datahandler.common.SW360Utils.printName;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -1379,6 +1380,33 @@ public class ReleaseSpecTest extends TestRestDocsSpecBase {
 
         String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
         mockMvc.perform(get("/api/releases/" + releaseWithAssessment.getId() + "/assessmentSummaryInfo")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void should_document_load_sources_file_of_licenses_in_release() throws Exception {
+        Map<String, Object> licenseToSourceFilesMapping = new HashMap<>();
+        licenseToSourceFilesMapping.put("licenseType", "Others");
+        licenseToSourceFilesMapping.put("licenseSpdxId", "LGPL-2.0-or-later");
+        licenseToSourceFilesMapping.put("licenseName", "LGPL-2.0-or-later");
+        licenseToSourceFilesMapping.put("sourcesFiles", List.of(
+                "include/gdk-pixbuf-2.0/gdk-pixbuf/gdk-pixbuf-animation.h",
+                "include/gdk-pixbuf-3.0/gdk-pixbuf/gdk-pixbuf.h"
+        ));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("releaseId", release.getId());
+        response.put("releaseName", printName(release));
+        response.put("attachmentName", "CLIXML_libvips-8.8.1-linux-x64.tar.gz_2024-05-17_14_59_30.xml");
+        response.put("status", "success");
+        response.put("licensesData", List.of(licenseToSourceFilesMapping));
+
+        given(this.releaseServiceMock.serveLicensesToSourceFilesMapping(eq(release.getId()), any())).willReturn(response);
+
+        String accessToken = TestHelper.getAccessToken(mockMvc, testUserId, testUserPassword);
+        mockMvc.perform(get("/api/releases/" + release.getId() + "/licensesToSourceFiles")
                         .header("Authorization", "Bearer " + accessToken)
                         .accept(MediaTypes.HAL_JSON))
                 .andExpect(status().isOk());
