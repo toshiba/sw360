@@ -171,7 +171,7 @@
     <springdoc-openapi-webmvc.version>1.7.0</springdoc-openapi-webmvc.version>
     <springframework.version>5.3.27</springframework.version>
     <thrift.version>0.18.1</thrift.version>
-    <tika.version>1.28.5</tika.version>
+    <tika.version>2.0.0</tika.version>
     <wiremock.version>2.26.0</wiremock.version>
     <javax.servlet-api.version>4.0.1</javax.servlet-api.version>
 
@@ -803,8 +803,8 @@
           <ratchetFrom>origin/main</ratchetFrom>
           <formats>
             <format>
-              <trimTrailingWhitespace />
-              <endWithNewline />
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
               <includes>
                 <include>*.java</include>
               </includes>
@@ -826,11 +826,11 @@
               <includes>
                 <include>**/*.md</include>
               </includes>
-              <flexmark></flexmark>
+              <flexmark/>
             </markdown>
           </configuration>
           <java>
-            <eclipse></eclipse>
+            <eclipse/>
           </java>
         </configuration>
       </plugin>
