@@ -2337,7 +2337,7 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
                             releaseNodes = mapper.readValue(releaseNetwork, new TypeReference<>() {
                             });
                             if (withAllReleases == WITH_ROOT_RELEASES_ONLY) {
-                                linkedReleases = convertReleaseNodesToReleaseLinksSequentially(releaseNodes, id, user, "", 0);
+                                linkedReleases = convertReleaseNodesToReleaseLinksParallel(releaseNodes, id, user);
                             } else {
                                 List<ReleaseNode> flattenedNetwork = new ArrayList<>();
                                 Set<String> visitedNodeIds = new HashSet<>();
@@ -2348,8 +2348,6 @@ public class ProjectDatabaseHandler extends AttachmentAwareDatabaseHandler {
                             }
                         } catch (JsonProcessingException e) {
                             log.error("JsonProcessingException: " + e);
-                        } catch (TException e) {
-                            log.error(e.getMessage());
                         }
                         projectLink.setLinkedReleases(nullToEmptyList(linkedReleases));
                     }
