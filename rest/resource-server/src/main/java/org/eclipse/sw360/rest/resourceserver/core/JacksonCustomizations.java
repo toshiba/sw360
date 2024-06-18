@@ -2257,7 +2257,10 @@ public class JacksonCustomizations {
                 "releaseLinkSize",
                 "releaseLinkIterator",
                 "setReleaseLink",
-                "setReleaseRelationship"
+                "setReleaseRelationship",
+                "setReleaseName",
+                "setReleaseVersion",
+                "setComponentId",
         })
         public abstract static class ReleaseNodeMixin extends ReleaseNode {
         }
