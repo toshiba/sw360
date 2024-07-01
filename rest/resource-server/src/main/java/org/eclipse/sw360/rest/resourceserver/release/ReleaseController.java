@@ -37,6 +37,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -1388,6 +1389,74 @@ public class ReleaseController implements RepresentationModelProcessor<Repositor
         }
 
         return new ResponseEntity<>(assessmentSummaryMap, HttpStatus.OK);
+    }
+
+    @Operation(
+            summary = "Get assessment summary info of release.",
+            description = "Get assessment summary info of release (Have one CLI file only).",
+            tags = {"Releases"},
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            content = {@Content(mediaType = "application/hal+json",
+                                    schema = @Schema(
+                                            type = "object",
+                                            example = "{\n" +
+                                                    "  \"GeneralAssessment\": \"General Assessment\",\n" +
+                                                    "  \"CriticalFilesFound\": \"Critical Files Found\",\n" +
+                                                    "  \"AdditionalNotes\": \"Additional Notes\",\n" +
+                                                    "  \"UsageRestrictionsFound\": \"None\",\n" +
+                                                    "  \"ExportRestrictionsFound\": \"Export Restrictions Found\",\n" +
+                                                    "  \"DependencyNotes\": \"Dependency Notes\"\n" +
+                                                    "}"
+                                    ))}
+                    )
+            }
+    )
+    @RequestMapping(value = RELEASES_URL + "/{id}/checkCyclicLink", method = RequestMethod.POST)
+    public ResponseEntity<?> checkForCyclicReleaseLink(
+            @Parameter(description = "The ID of the checking release.")
+            @PathVariable("id") String releaseId,
+            @RequestBody Map<String, Set<String>> relationshipReleaseIds
+    ) throws TException {
+        User user = restControllerHelper.getSw360UserFromAuthentication();
+        List<ImmutableMap<String, Object>> results = new ArrayList<>();
+
+        if (!CommonUtils.isNullOrEmptyCollection(relationshipReleaseIds.get("linkedToReleases"))) {
+            for (String parentReleaseId : relationshipReleaseIds.get("linkedToReleases")) {
+                String cyclicPath = releaseService.checkForCyclicLinkedReleases(parentReleaseId, releaseId, user);
+                if (CommonUtils.isNotNullEmptyOrWhitespace(cyclicPath.trim())) {
+                    results.add(ImmutableMap.<String, Object>builder()
+                            .put("message", cyclicPath)
+                            .put("status", 409)
+                            .build());
+                } else {
+                    results.add(ImmutableMap.<String, Object>builder()
+                            .put("message", "There are no cyclic link between " + parentReleaseId + " and " + releaseId)
+                            .put("status", 200)
+                            .build());
+                }
+            }
+        }
+
+        if (!CommonUtils.isNullOrEmptyCollection(relationshipReleaseIds.get("linkedReleases"))) {
+            for (String linkedReleaseId : relationshipReleaseIds.get("linkedReleases")) {
+                String cyclicPath = releaseService.checkForCyclicLinkedReleases(releaseId, linkedReleaseId, user);
+                if (CommonUtils.isNotNullEmptyOrWhitespace(cyclicPath.trim())) {
+                    results.add(ImmutableMap.<String, Object>builder()
+                            .put("message", cyclicPath)
+                            .put("status", 409)
+                            .build());
+                } else {
+                    results.add(ImmutableMap.<String, Object>builder()
+                            .put("message", "There are no cyclic link between " + releaseId + " and " + linkedReleaseId)
+                            .put("status", 200)
+                            .build());
+                }
+            }
+        }
+
+        return new ResponseEntity<>(results, HttpStatus.MULTI_STATUS);
     }
 
     @Override

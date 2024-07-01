@@ -787,4 +787,13 @@ public class Sw360ReleaseService implements AwareOfRestServices<Release> {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
         return sw360ComponentClient.isReleaseActionAllowed(release, sw360User, action);
     }
+
+    public String checkForCyclicLinkedReleases(String parentReleaseId, String linkedReleaseId, User sw360User) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        Release parentReleaseById = getReleaseForUserById(parentReleaseId, sw360User);
+        Map<String, ReleaseRelationship> releaseRelationshipMap = new HashMap<>();
+        releaseRelationshipMap.put(linkedReleaseId, ReleaseRelationship.CONTAINED);
+        parentReleaseById.setReleaseIdToRelationship(releaseRelationshipMap);
+        return sw360ComponentClient.getCyclicLinkedReleasePath(parentReleaseById, sw360User);
+    }
 }
