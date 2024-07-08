@@ -2930,6 +2930,9 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
 
         releaseNode.setReleaseRelationship(releaseRelationShipUpper);
         releaseNode.setMainlineState(mainLineStateUpper);
+        releaseNode.unsetComponentId();
+        releaseNode.unsetReleaseName();
+        releaseNode.unsetReleaseVersion();
 
         if (operation.equals(ProjectOperation.CREATE)) {
             releaseNode.setCreateOn(SW360Utils.getCreatedOn());
