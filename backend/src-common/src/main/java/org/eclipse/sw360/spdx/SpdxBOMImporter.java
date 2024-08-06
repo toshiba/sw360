@@ -11,7 +11,9 @@
  */
 package org.eclipse.sw360.spdx;
 
+import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.SW360Constants;
+import org.eclipse.sw360.datahandler.common.SW360Utils;
 import org.eclipse.sw360.datahandler.db.DatabaseHandlerUtil;
 import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
@@ -56,6 +58,7 @@ import java.util.stream.Stream;
 
 import static org.eclipse.sw360.datahandler.common.CommonUtils.isNotNullEmptyOrWhitespace;
 import static org.eclipse.sw360.datahandler.common.CommonUtils.isNullEmptyOrWhitespace;
+import static org.eclipse.sw360.datahandler.common.SW360ConfigKeys.SPDX_DOCUMENT_ENABLED;
 
 public class SpdxBOMImporter {
     private static final Logger log = LogManager.getLogger(SpdxBOMImporter.class);
@@ -200,6 +203,8 @@ public class SpdxBOMImporter {
             }
         } catch (InvalidSPDXAnalysisException | NullPointerException e) {
             log.error("Can not open file to SpdxDocument " +e);
+        } catch (TException e) {
+            log.error(e.getMessage());
         }
         return requestSummary;
     }
@@ -710,12 +715,12 @@ public class SpdxBOMImporter {
         return attachment;
     }
 
-    private Optional<SpdxBOMImporterSink.Response> importAsRelease(SpdxElement relatedSpdxElement) throws SW360Exception, InvalidSPDXAnalysisException {
+    private Optional<SpdxBOMImporterSink.Response> importAsRelease(SpdxElement relatedSpdxElement) throws TException, InvalidSPDXAnalysisException {
         return importAsRelease(relatedSpdxElement, null, null);
     }
 
     private Optional<SpdxBOMImporterSink.Response> importAsRelease(SpdxElement relatedSpdxElement, AttachmentContent attachmentContent, SpdxDocument spdxDocument
-    ) throws SW360Exception, InvalidSPDXAnalysisException {
+    ) throws TException, InvalidSPDXAnalysisException {
         if (relatedSpdxElement instanceof SpdxPackage) {
             final SpdxPackage spdxPackage = (SpdxPackage) relatedSpdxElement;
             final Release release;
@@ -747,7 +752,7 @@ public class SpdxBOMImporter {
                         spdxPackages.add(spdxPackageCheck);
                 }
                 importAsReleaseFromSpdxDocument(spdxPackages,attachmentContent,spdxDocument);
-                if (SW360Constants.SPDX_DOCUMENT_ENABLED) {
+                if (Boolean.parseBoolean(SW360Utils.getConfigByKey(SPDX_DOCUMENT_ENABLED))) {
                     try {
                         importSpdxDocument(response.getId(), spdxDocument, spdxPackage);
                     } catch (MalformedURLException e) {
@@ -773,7 +778,7 @@ public class SpdxBOMImporter {
         return allPackages;
     }
 
-    private  void importAsReleaseFromSpdxDocument(List<SpdxPackage> packages, AttachmentContent attachmentContent,SpdxDocument spdxDocument) throws SW360Exception, InvalidSPDXAnalysisException {
+    private  void importAsReleaseFromSpdxDocument(List<SpdxPackage> packages, AttachmentContent attachmentContent,SpdxDocument spdxDocument) throws TException, InvalidSPDXAnalysisException {
         for (SpdxPackage spdxElement: packages){
             final Release release = createReleaseFromSpdxPackage(spdxElement);
             String name = spdxElement.getName().toString().replace("Optional[", "").replace("]","");
@@ -795,7 +800,7 @@ public class SpdxBOMImporter {
                         release.setAttachments(Collections.singleton(attachment));
                     }
                     final SpdxBOMImporterSink.Response response = sink.addRelease(release);
-                    if (SW360Constants.SPDX_DOCUMENT_ENABLED) {
+                    if (Boolean.parseBoolean(SW360Utils.getConfigByKey(SPDX_DOCUMENT_ENABLED))) {
                         try {
                             importSpdxDocument(response.getId(), spdxDocument, spdxElement);
                         } catch (MalformedURLException e) {
@@ -901,7 +906,7 @@ public class SpdxBOMImporter {
         return project;
     }
 
-    private List<SpdxBOMImporterSink.Response> importAsReleases(Relationship[] relationships) throws SW360Exception, InvalidSPDXAnalysisException {
+    private List<SpdxBOMImporterSink.Response> importAsReleases(Relationship[] relationships) throws TException, InvalidSPDXAnalysisException {
         List<SpdxBOMImporterSink.Response> releases = new ArrayList<>();
 
         Map<RelationshipType, ReleaseRelationship> typeToSupplierMap = new HashMap<>();
@@ -935,7 +940,7 @@ public class SpdxBOMImporter {
     }
 
 
-    private Optional<SpdxBOMImporterSink.Response> importAsProject(SpdxElement spdxElement, AttachmentContent attachmentContent) throws SW360Exception, InvalidSPDXAnalysisException {
+    private Optional<SpdxBOMImporterSink.Response> importAsProject(SpdxElement spdxElement, AttachmentContent attachmentContent) throws TException, InvalidSPDXAnalysisException {
         if (spdxElement instanceof SpdxPackage) {
             final SpdxPackage spdxPackage = (SpdxPackage) spdxElement;
 

@@ -47,6 +47,7 @@
         <module>src-spdxdocumentcreationinfo</module>
         <module>src-spdxpackageinfo</module>
         <module>src-packages</module>
+        <module>src-configuration</module>
     </modules>
 
     <dependencies>
