@@ -126,6 +126,7 @@ enum MainlineState {
 
 enum ConfigFor {
     FOSSOLOGY_REST = 0,
+    SW360_CONFIGURATION = 1,
 }
 
 enum ObligationStatus {
