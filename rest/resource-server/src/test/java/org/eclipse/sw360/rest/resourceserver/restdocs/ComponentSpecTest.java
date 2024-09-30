@@ -73,6 +73,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.queryPar
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 public class ComponentSpecTest extends TestRestDocsSpecBase {
@@ -1341,5 +1342,27 @@ public class ComponentSpecTest extends TestRestDocsSpecBase {
                              parameterWithName("mimetype").description("Projects download format. Possible values are `<xls|xlsx>`"),
                              parameterWithName("module").description("module represent the project or component. Possible values are `<components|projects>`")
                      )));
+    }
+
+    @Test
+    public void should_unsubscribe_user_from_component() throws Exception {
+        mockMvc.perform(post("/api/components/" + angularComponent.getId() + "/subscription")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", TestHelper.generateAuthHeader(testUserId, testUserPassword)))
+                .andExpect(status().isOk())
+                .andExpect(content().json("\"Successfully unsubscribed from the component.\""));
+    }
+
+
+    @Test
+    public void should_subscribe_user_to_component() throws Exception {
+        given(this.componentServiceMock.getComponentSubscriptions(any()))
+                .willReturn(new ArrayList<>());
+
+        mockMvc.perform(post("/api/components/" + angularComponent.getId() + "/subscription")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", TestHelper.generateAuthHeader(testUserId, testUserPassword)))
+                .andExpect(status().isOk())
+                .andExpect(content().json("\"Successfully subscribed to the component.\""));
     }
 }

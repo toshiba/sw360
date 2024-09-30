@@ -320,6 +320,34 @@ public class ComponentController implements RepresentationModelProcessor<Reposit
     }
 
     @Operation(
+            summary = "Toggle user subscription to a component",
+            description = "Subscribes or unsubscribes the user to a specified component based on their current subscription status.",
+            tags = {"Components"}
+    )
+
+    @RequestMapping(value = COMPONENTS_URL + "/{id}/subscription", method = RequestMethod.POST)
+    public ResponseEntity<String> toggleComponentSubscription(
+            @PathVariable("id") String componentId
+    ) throws TException {
+        User user = restControllerHelper.getSw360UserFromAuthentication();
+        List<Component> subscriptions = componentService.getComponentSubscriptions(user);
+
+        boolean isSubscribed = subscriptions.stream()
+                .anyMatch(component -> component.getId().equals(componentId));
+
+        String message;
+        if (isSubscribed) {
+            componentService.unsubscribeComponent(componentId, user);
+            message = "Successfully unsubscribed from the component.";
+        } else {
+            componentService.subscribeComponent(componentId, user);
+            message = "Successfully subscribed to the component.";
+        }
+
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+
+    @Operation(
             summary = "Get components by external ID.",
             description = "Get components by external ID.",
             tags = {"Components"}
