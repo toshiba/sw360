@@ -752,4 +752,24 @@ public class Sw360ReleaseService implements AwareOfRestServices<Release> {
         ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
         return sw360ComponentClient.searchAccessibleReleases(searchText, sw360User);
     }
+
+    /**
+     * Subscribe release
+     * @param releaseId              Release ID
+     * @throws TException            TException
+     */
+    public void subscribeRelease(User user, String releaseId) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        sw360ComponentClient.subscribeRelease(releaseId, user);
+    }
+
+    /**
+     * Unsubscribe release
+     * @param releaseId              Release ID
+     * @throws TException            TException
+     */
+    public void unsubscribeRelease(User user, String releaseId) throws TException {
+        ComponentService.Iface sw360ComponentClient = getThriftComponentClient();
+        sw360ComponentClient.unsubscribeRelease(releaseId, user);
+    }
 }
