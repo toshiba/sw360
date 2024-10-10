@@ -145,7 +145,7 @@
     <springframework.version>6.1.12</springframework.version>
     <spring-security-oauth2-authorization-server.version>1.3.2</spring-security-oauth2-authorization-server.version>
     <thrift.version>0.20.0</thrift.version>
-    <tika.version>1.28.5</tika.version>
+    <tika.version>2.0.0</tika.version>
     <wiremock.version>2.26.0</wiremock.version>
     <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
     <jose4j.version>0.9.6</jose4j.version>
