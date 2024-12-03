@@ -460,6 +460,7 @@ public class ProjectController implements RepresentationModelProcessor<Repositor
         User sw360User = restControllerHelper.getSw360UserFromAuthentication();
         Project sw360Project = projectService.getProjectForUserById(id, sw360User);
         HalResource<Project> userHalResource = createHalProject(sw360Project, sw360User);
+        setAdditionalFieldsToHalResource(sw360Project,userHalResource);
         return new ResponseEntity<>(userHalResource, HttpStatus.OK);
     }
 
