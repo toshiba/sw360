@@ -282,7 +282,8 @@ public class PackageController implements RepresentationModelProcessor<Repositor
             restControllerHelper.addEmbeddedSingleRelease(halPackage, release);
         }
         if (sw360Package.getModifiedBy() != null) {
-            restControllerHelper.addEmbeddedModifiedBy(halPackage, sw360User, "modifiedBy");
+            User packageModifier = restControllerHelper.getUserByEmail(sw360Package.getModifiedBy());
+            restControllerHelper.addEmbeddedUser(halPackage, packageModifier, "modifiedBy");
         }
         return halPackage;
     }
