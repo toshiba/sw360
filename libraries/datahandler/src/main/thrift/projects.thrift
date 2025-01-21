@@ -121,6 +121,7 @@ struct Project {
     131: optional string ownerAccountingUnit,
     132: optional string ownerGroup,
     133: optional string ownerCountry,
+    134: optional string department,
 
     // Linked objects
     30: optional map<string, ProjectProjectRelationship> linkedProjects,
@@ -143,13 +144,13 @@ struct Project {
     49: optional bool considerReleasesFromExternalList, // Consider list of releases from existing external list
     47: optional string licenseInfoHeaderText;
     48: optional bool enableVulnerabilitiesDisplay, // flag for enabling displaying vulnerabilities in project view
-    134: optional string obligationsText,
-    135: optional string clearingSummary,
-    136: optional string specialRisksOSS,
-    137: optional string generalRisks3rdParty,
-    138: optional string specialRisks3rdParty,
-    139: optional string deliveryChannels,
-    140: optional string remarksAdditionalRequirements,
+    135: optional string obligationsText,
+    136: optional string clearingSummary,
+    137: optional string specialRisksOSS,
+    138: optional string generalRisks3rdParty,
+    139: optional string specialRisks3rdParty,
+    140: optional string deliveryChannels,
+    141: optional string remarksAdditionalRequirements,
 
     // Information for ModerationRequests
     70: optional DocumentState documentState,
@@ -290,6 +291,7 @@ struct ProjectDTO{
     131: optional string ownerAccountingUnit,
     132: optional string ownerGroup,
     133: optional string ownerCountry,
+    134: optional string department,
 
     // Linked objects
     30: optional map<string, ProjectProjectRelationship> linkedProjects,
@@ -305,13 +307,13 @@ struct ProjectDTO{
     49: optional bool considerReleasesFromExternalList, // Consider list of releases from existing external list,
     47: optional string licenseInfoHeaderText;
     48: optional bool enableVulnerabilitiesDisplay, // flag for enabling displaying vulnerabilities in project view
-    134: optional string obligationsText,
-    135: optional string clearingSummary,
-    136: optional string specialRisksOSS,
-    137: optional string generalRisks3rdParty,
-    138: optional string specialRisks3rdParty,
-    139: optional string deliveryChannels,
-    140: optional string remarksAdditionalRequirements,
+    135: optional string obligationsText,
+    136: optional string clearingSummary,
+    137: optional string specialRisksOSS,
+    138: optional string generalRisks3rdParty,
+    139: optional string specialRisks3rdParty,
+    140: optional string deliveryChannels,
+    141: optional string remarksAdditionalRequirements,
 
     // Information for ModerationRequests
     70: optional DocumentState documentState,
