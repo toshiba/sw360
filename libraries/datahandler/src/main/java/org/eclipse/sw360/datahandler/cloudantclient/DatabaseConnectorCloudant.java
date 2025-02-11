@@ -43,12 +43,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.eclipse.sw360.datahandler.common.DatabaseEntity;
 
 /**
  * Database Connector to a CouchDB database
  */
 public class DatabaseConnectorCloudant {
-
     private final Logger log = LogManager.getLogger(DatabaseConnectorCloudant.class);
     private static final ImmutableList<String> entitiesWithNonMatchingStructType = ImmutableList
             .of("moderation", "attachment", "usedReleaseRelation");
@@ -715,7 +715,10 @@ public class DatabaseConnectorCloudant {
             TFieldIdEnum rev = tbase.fieldForId(2);
             tbase.setFieldValue(id, docId);
             tbase.setFieldValue(rev, docRev);
-        }
+        } else if (doc instanceof DatabaseEntity entity) {
+            entity.setId(docId);
+            entity.setRev(docRev);
+        } 
     }
 
     public boolean contains(@NotNull String docId) {

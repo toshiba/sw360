@@ -42,7 +42,7 @@ public class Sw360ClientDetailsService implements RegisteredClientRepository {
     }
 
     private RegisteredClient getByClientId(String clientId) {
-        OAuthClientEntity oce = clientRepo.getByClientId(clientId);
+        OAuthClientEntity oce = clientRepo.get(clientId);
         Set<String> scopes = oce.getScope();
         RegisteredClient registeredClient = RegisteredClient
                 .withId(oce.getClientId())

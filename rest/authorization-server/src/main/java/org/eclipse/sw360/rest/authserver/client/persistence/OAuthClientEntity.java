@@ -13,14 +13,17 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.eclipse.sw360.datahandler.common.DatabaseEntity;
 
-public class OAuthClientEntity implements Serializable {
+@JsonDeserialize(using = OAuthClientDeserializer.class)
+public class OAuthClientEntity implements Serializable, DatabaseEntity {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -31,7 +34,7 @@ public class OAuthClientEntity implements Serializable {
     private String description;
     private Set<String> resourceIds;
     private Set<String> authorizedGrantTypes;
-    private Collection<GrantedAuthority> authorities;
+    private Set<String> authorities;
     private Set<String> scope;
     private boolean secretRequired;
     private boolean scoped;
@@ -51,12 +54,12 @@ public class OAuthClientEntity implements Serializable {
     }
 
     @JsonProperty("_rev")
-    public void setRevision(String revision) {
+    public void setRev(String revision) {
         this.revision = revision;
     }
 
     @JsonProperty("_rev")
-    public String getRevision() {
+    public String getRev() {
         return revision;
     }
 
@@ -122,23 +125,22 @@ public class OAuthClientEntity implements Serializable {
         this.authorizedGrantTypes=authorizedGrantTypes;
     }
 
-    public Collection<GrantedAuthority> getAuthorities() {
+    public Set<String> getAuthorities() {
         return authorities;
     }
 
-    public void setAuthorities(Collection<GrantedAuthority> authorities) {
-        this.authorities=authorities;
+    public void setAuthorities(Set<String> authorities) {
+        this.authorities = authorities;
     }
 
     @JsonProperty("authorities")
     public Set<String> getAuthoritiesAsStrings() {
-        return AuthorityUtils.authorityListToSet(this.authorities);
+        return authorities;
     }
 
     @JsonProperty("authorities")
-    @JsonDeserialize()
     public void setAuthoritiesAsStrings(Set<String> values) {
-        this.setAuthorities(AuthorityUtils.createAuthorityList(values.toArray(new String[values.size()])));
+        this.authorities = values;
     }
 
     @JsonProperty("scope")

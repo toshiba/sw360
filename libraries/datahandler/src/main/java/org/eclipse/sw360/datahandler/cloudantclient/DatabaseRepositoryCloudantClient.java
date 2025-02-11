@@ -23,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TFieldIdEnum;
+import org.eclipse.sw360.datahandler.common.DatabaseEntity;
 import org.eclipse.sw360.datahandler.thrift.SW360Exception;
 import org.eclipse.sw360.datahandler.thrift.Source;
 import org.eclipse.sw360.datahandler.thrift.attachments.Attachment;
@@ -370,6 +371,8 @@ public class DatabaseRepositoryCloudantClient<T> {
             TFieldIdEnum id = tbase.fieldForId(1);
             String docId = (String) tbase.getFieldValue(id);
             return connector.deleteById(docId);
+        } else if (doc instanceof DatabaseEntity entity) {
+            return connector.deleteById(entity.getId());
         }
         return connector.remove(doc);
     }

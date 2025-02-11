@@ -80,7 +80,7 @@ public class OAuthClientController {
         OAuthClientEntity clientEntity = null;
 
         if (StringUtils.isNotEmpty(clientResource.getClientId())) {
-            clientEntity = repo.getByClientId(clientResource.getClientId());
+            clientEntity = repo.get(clientResource.getClientId());
             if (clientEntity == null) {
                 return new ResponseEntity<String>("No client found for given clientId " + clientResource.getClientId(),
                         HttpStatus.BAD_REQUEST);
@@ -104,7 +104,7 @@ public class OAuthClientController {
         repo.update(clientEntity);
 
         return new ResponseEntity<OAuthClientResource>(
-                new OAuthClientResource(repo.getByClientId(clientEntity.getClientId())), HttpStatus.OK);
+                new OAuthClientResource(repo.get(clientEntity.getClientId())), HttpStatus.OK);
     }
 
     @RequestMapping(method = RequestMethod.DELETE, path = "/{clientId}", consumes = "application/json", produces = "application/json")
@@ -112,7 +112,7 @@ public class OAuthClientController {
         OAuthClientEntity clientEntity = null;
 
         if (StringUtils.isNotEmpty(clientId)) {
-            clientEntity = repo.getByClientId(clientId);
+            clientEntity = repo.get(clientId);
             if (clientEntity == null) {
                 return new ResponseEntity<String>("No client found for given clientId " + clientId,
                         HttpStatus.BAD_REQUEST);
