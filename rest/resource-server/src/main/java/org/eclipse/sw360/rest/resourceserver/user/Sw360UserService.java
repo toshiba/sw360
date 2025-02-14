@@ -12,6 +12,8 @@ package org.eclipse.sw360.rest.resourceserver.user;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -27,17 +29,15 @@ import org.eclipse.sw360.datahandler.thrift.users.RestApiToken;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
 import org.eclipse.sw360.datahandler.thrift.users.UserService;
+import org.eclipse.sw360.rest.resourceserver.project.Sw360ProjectService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
+import java.util.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Set;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.eclipse.sw360.rest.resourceserver.Sw360ResourceServer.API_TOKEN_MAX_VALIDITY_READ_IN_DAYS;
@@ -48,6 +48,7 @@ import static org.eclipse.sw360.rest.resourceserver.Sw360ResourceServer.API_WRIT
 public class Sw360UserService {
     @Value("${sw360.thrift-server-url:http://localhost:8080}")
     private String thriftServerUrl;
+    private static final Logger log = LogManager.getLogger(Sw360UserService.class);
     private static final String AUTHORITIES_READ = "READ";
     private static final String AUTHORITIES_WRITE = "WRITE";
     private static final String EXPIRATION_DATE_PROPERTY = "expirationDate";
@@ -259,4 +260,59 @@ public class Sw360UserService {
             throw new IllegalArgumentException("Invalid permissions: " + String.join(", ", otherPermissions) + ".");
         }
     }
+
+    public Map<String, List<String>> getSecondaryDepartmentMembers() {
+        try {
+            UserService.Iface userService = getThriftUserClient();
+            return userService.getSecondaryDepartmentMemberEmails();
+        } catch (TException e) {
+            log.error(e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    public Map<String, List<String>> getMemberEmailsBySecondaryDepartmentName(String departmentName) {
+        try {
+            UserService.Iface userService = getThriftUserClient();
+            List<String> memberEmails = List.copyOf(userService.getMemberEmailsBySecondaryDepartmentName(departmentName));
+            return Map.of(departmentName, memberEmails);
+        } catch (TException e) {
+            log.error(e.getMessage());
+            return Map.of(departmentName, Collections.emptyList());
+        }
+    }
+
+    public void updateMembersInDepartment(String departmentName, List<String> newMembersList) throws TException {
+        List<String> currentMembersEmails = getMemberEmailsBySecondaryDepartmentName(departmentName).get(departmentName);
+        List<String> deleteMembersEmails = new ArrayList<>(currentMembersEmails);
+        deleteMembersEmails.removeAll(newMembersList);
+
+        List<String> addedMembersEmails = new ArrayList<>(newMembersList);
+        addedMembersEmails.removeAll(currentMembersEmails);
+
+        deleteMembersFromDepartment(departmentName, deleteMembersEmails);
+        addMembersToDepartment(departmentName, addedMembersEmails);
+    }
+
+    private void deleteMembersFromDepartment(String departmentName, List<String> removedMemberEmails) throws TException {
+        List<User> addedMembers = getUsersByEmails(removedMemberEmails);
+        UserService.Iface userClient = getThriftUserClient();
+        userClient.deleteDepartmentFromListUser(addedMembers, departmentName);
+    }
+
+    private void addMembersToDepartment(String departmentName, List<String> addedMemberEmails) throws TException {
+        List<User> addedMembers = getUsersByEmails(addedMemberEmails);
+        UserService.Iface userClient = getThriftUserClient();
+        userClient.updateDepartmentToListUser(addedMembers, departmentName);
+    }
+
+    private List<User> getUsersByEmails(List<String> emails) {
+        try {
+            UserService.Iface userClient = getThriftUserClient();
+            return userClient.getAllUserByEmails(emails);
+        } catch (TException exception) {
+            return Collections.emptyList();
+        }
+    }
+
 }

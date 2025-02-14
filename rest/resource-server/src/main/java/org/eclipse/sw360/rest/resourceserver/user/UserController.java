@@ -80,6 +80,7 @@ public class UserController implements RepresentationModelProcessor<RepositoryLi
     protected final EntityLinks entityLinks;
 
     static final String USERS_URL = "/users";
+    static final String SECONDARY_DEPARTMENT_URL = "/secondaryDepartments";
 
     @NonNull
     private final Sw360UserService userService;
@@ -383,5 +384,28 @@ public class UserController implements RepresentationModelProcessor<RepositoryLi
         userGroupMap.put("primaryGrpList", primaryGrpList);
         userGroupMap.put("secondaryGrpList", secondaryGrpList);
         return new ResponseEntity<>(userGroupMap, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Fetch a list of members' emails from each department.",
+            description = "Fetch a list of members' emails from each department.", tags = {"Users"})
+    @RequestMapping(value = SECONDARY_DEPARTMENT_URL + "/members", method = RequestMethod.GET)
+    public ResponseEntity<Map<String, List<String>>> getMembersEmailsOfSecondaryDepartments(
+            @Parameter(description = "departmentName") @RequestParam(value = "departmentName", required = false) String departmentName
+    ) {
+        if (CommonUtils.isNotNullEmptyOrWhitespace(departmentName)) {
+            return new ResponseEntity<>(userService.getMemberEmailsBySecondaryDepartmentName(departmentName), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(userService.getSecondaryDepartmentMembers(), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Update members of a secondary department.",
+            description = "Update members of a secondary department.", tags = {"Users"})
+    @RequestMapping(value = SECONDARY_DEPARTMENT_URL + "/members", method = RequestMethod.PATCH)
+    public ResponseEntity<Map<String, List<String>>> updateMembersOfSecondaryDepartment(
+            @Parameter(description = "Department name") @RequestParam(value = "departmentName", required = false) String departmentName,
+            @Parameter(description = "New email list of members in department") @RequestBody List<String> emailsList
+    ) throws TException {
+        userService.updateMembersInDepartment(departmentName, emailsList);
+        return new ResponseEntity<>(userService.getMemberEmailsBySecondaryDepartmentName(departmentName), HttpStatus.OK);
     }
 }

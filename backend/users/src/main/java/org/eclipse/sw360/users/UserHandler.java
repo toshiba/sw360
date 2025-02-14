@@ -189,8 +189,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public Set<String> getAllEmailsByDepartmentKey(String departmentName) throws TException {
-        return db.getAllEmailsByDepartmentKey(departmentName);
+    public Set<String> getMemberEmailsBySecondaryDepartmentName(String departmentName) throws TException {
+        return db.getAllEmailsBySecondaryDepartmentName(departmentName);
     }
 
     public Set<String> getUserEmails() throws TException {
@@ -215,18 +215,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public Map<String, List<User>> getAllUserByDepartment() throws TException {
-        return db.getAllUserByDepartment();
-    }
-
-    @Override
-    public String convertUsersByDepartmentToJson(String department) throws TException {
-        return db.convertUsersByDepartmentToJson(department);
-    }
-
-    @Override
-    public String convertEmailsOtherDepartmentToJson(String department) throws TException {
-        return db.convertEmailsOtherDepartmentToJson(department);
+    public Map<String, List<String>> getSecondaryDepartmentMemberEmails() throws TException {
+        return db.getSecondaryDepartmentMemberEmails();
     }
 
     @Override
@@ -319,8 +309,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public void deleteDepartmentByListUser(List<User> users, String department) throws TException {
-        db.deleteDepartmentByUsers(users, department);
+    public void deleteDepartmentFromListUser(List<User> users, String department) throws TException {
+        db.deleteDepartmentFromListUser(users, department);
     }
 
     @Override

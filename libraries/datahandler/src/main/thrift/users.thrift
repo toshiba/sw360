@@ -184,7 +184,7 @@ service UserService {
 
     RequestStatus importDepartmentSchedule();
 
-    map<string, list<User>> getAllUserByDepartment();
+    map<string, list<string>> getSecondaryDepartmentMemberEmails();
 
     set<string> getListFileLog();
 
@@ -200,14 +200,10 @@ service UserService {
 
     list<User> getAllUserByEmails(1: list<string> emails)
 
-    string convertUsersByDepartmentToJson(1: string department)
-
-    string convertEmailsOtherDepartmentToJson(1: string department)
-
     void updateDepartmentToListUser(1: list<User> users, 2: string department)
 
-    void deleteDepartmentByListUser(1: list<User> users,2: string department)
+    void deleteDepartmentFromListUser(1: list<User> users,2: string department)
 
-    set<string> getAllEmailsByDepartmentKey(1: string departmentName)
+    set<string> getMemberEmailsBySecondaryDepartmentName(1: string departmentName)
 
 }
