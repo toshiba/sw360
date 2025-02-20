@@ -9,6 +9,8 @@
  */
 package org.eclipse.sw360.datahandler.cloudantclient;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -30,6 +32,8 @@ import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -665,9 +669,18 @@ public class DatabaseConnectorCloudant {
             return (Document) document;
         }
         Document doc = new Document();
-        Gson gson = this.instance.getGson();
-        Type t = new TypeToken<Map<String, Object>>() {}.getType();
-        Map<String, Object> map = gson.fromJson(gson.toJson(document), t);
+        Map<String, Object> map;
+
+        if (isInstanceOfOAuthClientEntity(doc)) {
+            // Use Jackson for OAuthClientEntity to respect @JsonProperty
+            ObjectMapper objectMapper = new ObjectMapper();
+            map = objectMapper.convertValue(document, new TypeReference<Map<String, Object>>() {});
+        } else {
+            Gson gson = this.instance.getGson();
+            Type type = new TypeToken<Map<String, Object>>() {}.getType();
+            map = gson.fromJson(gson.toJson(document), type);
+        }
+
         if (map.containsKey("id")) {
             if (!((String) map.get("id")).isEmpty()) {
                 doc.setId((String) map.get("id"));
@@ -715,7 +728,22 @@ public class DatabaseConnectorCloudant {
             TFieldIdEnum rev = tbase.fieldForId(2);
             tbase.setFieldValue(id, docId);
             tbase.setFieldValue(rev, docRev);
+        }  else if (isInstanceOfOAuthClientEntity(doc)) {
+            Class<?> clazz = doc.getClass();
+            try {
+                Method setIdMethod = clazz.getMethod("setId", String.class);
+                setIdMethod.invoke(doc, docId);
+
+                Method setRevMethod = clazz.getMethod("setRevision", String.class);
+                setRevMethod.invoke(doc, docRev);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                log.error(e.getMessage());
+            }
         }
+    }
+
+    private <T> boolean isInstanceOfOAuthClientEntity(T doc) {    
+        return doc.getClass().getSimpleName().equals("OAuthClientEntity");
     }
 
     public boolean contains(@NotNull String docId) {
