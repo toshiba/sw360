@@ -153,8 +153,8 @@ public class UserDatabaseHandler {
         return repository.getUsersWithPagination(pageData);
     }
 
-    public Set<String> getAllEmailsByDepartmentKey(String departmentKey) {
-        return repository.getEmailsByDepartmentName(departmentKey);
+    public Set<String> getAllEmailsBySecondaryDepartmentName(String departmentName) {
+        return repository.getEmailsBySecondaryDepartmentName(departmentName);
     }
 
     public RequestSummary importFileToDB(String pathFolder)  {
@@ -377,59 +377,24 @@ public class UserDatabaseHandler {
         return isEmpty;
     }
 
-    public Map<String, List<User>> getAllUserByDepartment() {
+    public Map<String, List<String>> getSecondaryDepartmentMemberEmails() {
         List<User> users = repository.getAll();
-        Map<String, List<User>> listMap = new HashMap<>();
+        Map<String, List<String>> departmentMembers = new HashMap<>();
         for (User user : users) {
             if (user.getSecondaryDepartmentsAndRoles() != null) {
                 user.getSecondaryDepartmentsAndRoles().forEach((key, value) -> {
-                    if (listMap.containsKey(key)) {
-                        List<User> list = listMap.get(key);
-                        list.add(user);
+                    if (departmentMembers.containsKey(key)) {
+                        List<String> listEmails = departmentMembers.get(key);
+                        listEmails.add(user.getEmail());
                     } else {
-                        List<User> list = new ArrayList<>();
-                        list.add(user);
-                        listMap.put(key, list);
+                        List<String> listEmails = new ArrayList<>();
+                        listEmails.add(user.getEmail());
+                        departmentMembers.put(key, listEmails);
                     }
                 });
             }
         }
-        return listMap;
-    }
-
-    public String convertUsersByDepartmentToJson(String departmentKey) {
-        Set<String> emails = repository.getEmailsByDepartmentName(departmentKey);
-        JsonArray departmentJsonArray = new JsonArray();
-        for (String email : emails) {
-            JsonObject object = new JsonObject();
-            object.addProperty("email", email);
-            departmentJsonArray.add(object);
-        }
-        return departmentJsonArray.toString().replace("\\", "");
-    }
-
-    public List<String> getAllEmailOtherDepartment(String departmentKey) {
-        Set<String> emailsbyDepartment = getAllEmailsByDepartmentKey(departmentKey);
-        Set<String> emailByListUser = getUserEmails();
-
-        List<User> users = repository.getAll();
-        for (User user : users) {
-            emailByListUser.add(user.getEmail());
-        }
-        List<String> emailOtherDepartment = new ArrayList<>(emailByListUser);
-        emailOtherDepartment.removeAll(emailsbyDepartment);
-        return emailOtherDepartment;
-    }
-
-    public String convertEmailsOtherDepartmentToJson(String departmentKey) {
-        JsonArray emailJsonArray = new JsonArray();
-        List<String> emailOtherDepartment = getAllEmailOtherDepartment(departmentKey);
-        for (String email : emailOtherDepartment) {
-            JsonObject object = new JsonObject();
-            object.addProperty("email", email);
-            emailJsonArray.add(object);
-        }
-        return emailJsonArray.toString().replace("\\", "");
+        return departmentMembers;
     }
 
     public Map<String, User> validateListEmailExistDB(Map<String, List<String>> mapList) {
@@ -473,7 +438,7 @@ public class UserDatabaseHandler {
         });
     }
 
-    public void deleteDepartmentByUser(User user, String departmentKey) {
+    public void deleteSecondaryDepartmentFromUser(User user, String departmentKey) {
         Map<String, Set<UserGroup>> map = user.getSecondaryDepartmentsAndRoles();
         Set<UserGroup> userGroups = new HashSet<>();
         for (Map.Entry<String, Set<UserGroup>> entry : map.entrySet()) {
@@ -487,9 +452,9 @@ public class UserDatabaseHandler {
     }
 
 
-    public void deleteDepartmentByUsers(List<User> users, String departmentKey) {
+    public void deleteSecondaryDepartmentFromListUser(List<User> users, String departmentKey) {
         for (User user : users) {
-            deleteDepartmentByUser(user, departmentKey);
+            deleteSecondaryDepartmentFromUser(user, departmentKey);
         }
     }
 
