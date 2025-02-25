@@ -16,21 +16,15 @@ import static org.eclipse.sw360.datahandler.common.SW360Assert.assertUser;
 import com.ibm.cloud.cloudant.v1.Cloudant;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.nio.file.Paths;
+import java.util.*;
+
 import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 import org.eclipse.sw360.datahandler.common.DatabaseSettings;
-import org.eclipse.sw360.datahandler.thrift.AddDocumentRequestSummary;
-import org.eclipse.sw360.datahandler.thrift.PaginationData;
-import org.eclipse.sw360.datahandler.thrift.RequestStatus;
-import org.eclipse.sw360.datahandler.thrift.RequestSummary;
+import org.eclipse.sw360.datahandler.thrift.*;
 import org.eclipse.sw360.datahandler.thrift.users.DepartmentConfigDTO;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.users.UserGroup;
@@ -189,8 +183,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public Set<String> getAllEmailsByDepartmentKey(String departmentName) throws TException {
-        return db.getAllEmailsByDepartmentKey(departmentName);
+    public Set<String> getMemberEmailsBySecondaryDepartmentName(String departmentName) throws TException {
+        return db.getAllEmailsBySecondaryDepartmentName(departmentName);
     }
 
     public Set<String> getUserEmails() throws TException {
@@ -215,18 +209,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public Map<String, List<User>> getAllUserByDepartment() throws TException {
-        return db.getAllUserByDepartment();
-    }
-
-    @Override
-    public String convertUsersByDepartmentToJson(String department) throws TException {
-        return db.convertUsersByDepartmentToJson(department);
-    }
-
-    @Override
-    public String convertEmailsOtherDepartmentToJson(String department) throws TException {
-        return db.convertEmailsOtherDepartmentToJson(department);
+    public Map<String, List<String>> getSecondaryDepartmentMemberEmails() throws TException {
+        return db.getSecondaryDepartmentMemberEmails();
     }
 
     @Override
@@ -238,7 +222,7 @@ public class UserHandler implements UserService.Iface {
                 File theDir = new File(path);
                 if (!theDir.exists())
                     theDir.mkdirs();
-                return FileUtil.listFileNames(path);
+                return FileUtil.getListFilesOlderThanNDays(configDTO.getShowFileLogFrom(), path);
             }
         } catch (IOException e) {
             log.error("Can't get file log: {}", e.getMessage());
@@ -247,26 +231,17 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public Map<String, List<String>> getAllContentFileLog() {
-        Map<String, List<String>> listMap = new HashMap<>();
-        try {
-            DepartmentConfigDTO configDTO = readFileDepartmentConfig.readFileJson();
-            if (configDTO != null && configDTO.getPathFolderLog().length() > 0) {
-                String path = configDTO.getPathFolderLog();
-                File theDir = new File(path);
-                if (!theDir.exists())
-                    theDir.mkdirs();
-                Set<String> fileNamesSet =
-                        FileUtil.getListFilesOlderThanNDays(configDTO.getShowFileLogFrom(), path);
-                for (String fileName : fileNamesSet) {
-                    listMap.put(FilenameUtils.getName(fileName).replace(EXTENSION, ""),
-                            FileUtil.readFileLog(fileName));
-                }
-            }
-        } catch (IOException e) {
-            log.error("Can't get file log: {}", e.getMessage());
+    public List<String> getLogFileContentByName(String fileName) throws SW360Exception {
+        DepartmentConfigDTO configDTO = readFileDepartmentConfig.readFileJson();
+        if (configDTO != null && configDTO.getPathFolderLog().length() > 0) {
+            String logFolderPath = configDTO.getPathFolderLog();
+            File theDir = new File(logFolderPath);
+            if (!theDir.exists())
+                theDir.mkdirs();
+            String logFilePath = Paths.get(logFolderPath, fileName + EXTENSION).toString();
+            return FileUtil.readFileLog(logFilePath);
         }
-        return listMap;
+        return Collections.emptyList();
     }
 
     @Override
@@ -319,8 +294,8 @@ public class UserHandler implements UserService.Iface {
     }
 
     @Override
-    public void deleteDepartmentByListUser(List<User> users, String department) throws TException {
-        db.deleteDepartmentByUsers(users, department);
+    public void deleteSecondaryDepartmentFromListUser(List<User> users, String department) throws TException {
+        db.deleteSecondaryDepartmentFromListUser(users, department);
     }
 
     @Override
