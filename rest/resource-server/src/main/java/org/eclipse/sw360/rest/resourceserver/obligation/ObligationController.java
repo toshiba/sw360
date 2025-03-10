@@ -24,6 +24,7 @@ import org.eclipse.sw360.datahandler.resourcelists.ResourceClassNotFoundExceptio
 import org.eclipse.sw360.datahandler.thrift.licenses.License;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.licenses.ObligationElement;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.rest.resourceserver.core.HalResource;
 import org.eclipse.sw360.rest.resourceserver.core.MultiStatus;
@@ -168,6 +169,20 @@ public class ObligationController implements RepresentationModelProcessor<Reposi
             }
         }
         return new ResponseEntity<>(results, HttpStatus.MULTI_STATUS);
+    }
+    
+    @Operation(
+            summary = "Search for obligation elements.",
+            description = "Search for obligation elements based on a search text.",
+            tags = {"Obligations"}
+    )
+    @RequestMapping(value = OBLIGATION_URL + "/element", method = RequestMethod.GET)
+    public ResponseEntity<List<ObligationElement>> searchObligationElements(
+            @Parameter(description = "The text to search for in obligation elements.")
+            @RequestParam(value = "searchText") String searchText
+    ) {
+        List<ObligationElement> results = obligationService.searchObligationElement(searchText);
+        return new ResponseEntity<>(results, HttpStatus.OK);
     }
 
     @Override

@@ -18,6 +18,7 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.THttpClient;
 import org.apache.thrift.transport.TTransportException;
 import org.eclipse.sw360.datahandler.thrift.RequestStatus;
+import org.eclipse.sw360.datahandler.thrift.licenses.ObligationElement;
 import org.eclipse.sw360.datahandler.thrift.users.User;
 import org.eclipse.sw360.datahandler.thrift.licenses.Obligation;
 import org.eclipse.sw360.datahandler.thrift.licenses.LicenseService;
@@ -79,5 +80,14 @@ public class Sw360ObligationService {
         THttpClient thriftClient = new THttpClient(thriftServerUrl + "/licenses/thrift");
         TProtocol protocol = new TCompactProtocol(thriftClient);
         return new LicenseService.Client(protocol);
+    }
+
+    public List<ObligationElement> searchObligationElement (String searchText) {
+        try {
+            LicenseService.Iface sw360LicenseClient = getThriftLicenseClient();
+            return sw360LicenseClient.searchObligationElement(searchText);
+        } catch (TException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
